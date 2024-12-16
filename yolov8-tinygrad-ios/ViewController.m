@@ -168,8 +168,6 @@ NSArray *yolo_classes;
     for (NSMutableDictionary *values in _q) {
         if ([values[@"op"] isEqualToString:@"BufferAlloc"]) {
             [buffers setObject:[device newBufferWithLength:[values[@"size"][0] intValue] options:MTLResourceStorageModeShared] forKey:values[@"buffer_num"][0]];
-        } else if ([values[@"op"] isEqualToString:@"BufferFree"]) {
-            [buffers removeObjectForKey: values[@"buffer_num"][0]];
         } else if ([values[@"op"] isEqualToString:@"CopyIn"]) {
             id<MTLBuffer> buffer = buffers[values[@"buffer_num"][0]];
             NSData *data = _h[values[@"datahash"][0]];
@@ -190,25 +188,6 @@ NSArray *yolo_classes;
                                                                                             reflection:&reflection
                                                                                                  error:&error];
             [pipeline_states setObject:pipeline_state forKey:@[values[@"name"][0],values[@"datahash"][0]]];
-        } else if ([values[@"op"] isEqualToString:@"ProgramFree"]) {
-            [pipeline_states removeObjectForKey:@[values[@"name"][0],values[@"datahash"][0]]];
-        } else if ([values[@"op"] isEqualToString:@"ProgramExec"]) {
-            id<MTLCommandBuffer> command_buffer = [mtl_queue commandBuffer];
-            id<MTLComputeCommandEncoder> encoder = [command_buffer computeCommandEncoder];
-            [encoder setComputePipelineState:pipeline_states[@[values[@"name"][0],values[@"datahash"][0]]]];
-            for(int i = 0; i < [(NSArray *)values[@"bufs"] count]; i++){
-                [encoder setBuffer:buffers[values[@"bufs"][i]] offset:0 atIndex:i];
-            }
-            for (int i = 0; i < [(NSArray *)values[@"vals"] count]; i++) {
-                NSInteger value = [values[@"vals"][i] integerValue];
-                [encoder setBytes:&value length:sizeof(NSInteger) atIndex:i + [(NSArray *)values[@"bufs"] count]];
-            }
-            MTLSize global_size = MTLSizeMake([values[@"global_sizes"][0] intValue], [values[@"global_sizes"][1] intValue], [values[@"global_sizes"][2] intValue]);
-            MTLSize local_size = MTLSizeMake([values[@"local_sizes"][0] intValue], [values[@"local_sizes"][1] intValue], [values[@"local_sizes"][2] intValue]);
-            [encoder dispatchThreadgroups:global_size threadsPerThreadgroup:local_size];
-            [encoder endEncoding];
-            [command_buffer commit];
-            [mtl_buffers_in_flight addObject: command_buffer];
         }
     }
     data = loadBytesFromFile(@"inf");
@@ -534,24 +513,6 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
                     uiImage = drawSquareOnImage(uiImage, [output[i][0] floatValue], [output[i][1] floatValue], [output[i][2] floatValue], [output[i][3] floatValue],output[i][4	]);
                 }
                 free(floatArray);
-            } else if ([values[@"op"] isEqualToString:@"ProgramAlloc"]) {
-                if ([pipeline_states objectForKey:@[values[@"name"][0],values[@"datahash"][0]]]) continue;
-                NSString *prg = [[NSString alloc] initWithData:_h[values[@"datahash"][0]] encoding:NSUTF8StringEncoding];
-                NSError *error = nil;
-                id<MTLLibrary> library = [device newLibraryWithSource:prg
-                                                              options:nil
-                                                                error:&error];
-                MTLComputePipelineDescriptor *descriptor = [[MTLComputePipelineDescriptor alloc] init];
-                descriptor.computeFunction = [library newFunctionWithName:values[@"name"][0]];;
-                descriptor.supportIndirectCommandBuffers = YES;
-                MTLComputePipelineReflection *reflection = nil;
-                id<MTLComputePipelineState> pipeline_state = [device newComputePipelineStateWithDescriptor:descriptor
-                                                                                                   options:MTLPipelineOptionNone
-                                                                                                reflection:&reflection
-                                                                                                     error:&error];
-                [pipeline_states setObject:pipeline_state forKey:@[values[@"name"][0],values[@"datahash"][0]]];
-            } else if ([values[@"op"] isEqualToString:@"ProgramFree"]) {
-                [pipeline_states removeObjectForKey:@[values[@"name"][0],values[@"datahash"][0]]];
             } else if ([values[@"op"] isEqualToString:@"ProgramExec"]) {
                 id<MTLCommandBuffer> command_buffer = [mtl_queue commandBuffer];
                 id<MTLComputeCommandEncoder> encoder = [command_buffer computeCommandEncoder];
