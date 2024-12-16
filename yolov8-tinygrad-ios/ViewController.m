@@ -157,7 +157,7 @@ NSArray *yolo_classes;
     CFRelease(data);
     string_data = [[NSString alloc] initWithData:range_data encoding:NSUTF8StringEncoding];
     _q = [NSMutableArray array];
-    NSArray *ops = @[@"BufferAlloc", @"BufferFree", @"CopyIn", @"CopyOut", @"ProgramAlloc", @"ProgramFree", @"ProgramExec"];
+    NSArray *ops = @[@"BufferAlloc", @"BufferFree", @"CopyIn", @"ProgramAlloc"];
     NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:[NSString stringWithFormat:@"(%@)\\(", [ops componentsJoinedByString:@"|"]] options:0 error:nil];
     __block NSInteger lastIndex = 0;
     [regex enumerateMatchesInString:string_data options:0 range:NSMakeRange(0, string_data.length) usingBlock:^(NSTextCheckingResult *match, NSMatchingFlags flags, BOOL *stop) {
@@ -168,6 +168,8 @@ NSArray *yolo_classes;
     for (NSMutableDictionary *values in _q) {
         if ([values[@"op"] isEqualToString:@"BufferAlloc"]) {
             [buffers setObject:[device newBufferWithLength:[values[@"size"][0] intValue] options:MTLResourceStorageModeShared] forKey:values[@"buffer_num"][0]];
+        } else if ([values[@"op"] isEqualToString:@"BufferFree"]) {
+            [buffers removeObjectForKey: values[@"buffer_num"][0]];
         } else if ([values[@"op"] isEqualToString:@"CopyIn"]) {
             id<MTLBuffer> buffer = buffers[values[@"buffer_num"][0]];
             NSData *data = _h[values[@"datahash"][0]];
@@ -188,23 +190,6 @@ NSArray *yolo_classes;
                                                                                             reflection:&reflection
                                                                                                  error:&error];
             [pipeline_states setObject:pipeline_state forKey:@[values[@"name"][0],values[@"datahash"][0]]];
-        } else if ([values[@"op"] isEqualToString:@"ProgramExec"]) {
-            id<MTLCommandBuffer> command_buffer = [mtl_queue commandBuffer];
-            id<MTLComputeCommandEncoder> encoder = [command_buffer computeCommandEncoder];
-            [encoder setComputePipelineState:pipeline_states[@[values[@"name"][0],values[@"datahash"][0]]]];
-            for(int i = 0; i < [(NSArray *)values[@"bufs"] count]; i++){
-                [encoder setBuffer:buffers[values[@"bufs"][i]] offset:0 atIndex:i];
-            }
-            for (int i = 0; i < [(NSArray *)values[@"vals"] count]; i++) {
-                NSInteger value = [values[@"vals"][i] integerValue];
-                [encoder setBytes:&value length:sizeof(NSInteger) atIndex:i + [(NSArray *)values[@"bufs"] count]];
-            }
-            MTLSize global_size = MTLSizeMake([values[@"global_sizes"][0] intValue], [values[@"global_sizes"][1] intValue], [values[@"global_sizes"][2] intValue]);
-            MTLSize local_size = MTLSizeMake([values[@"local_sizes"][0] intValue], [values[@"local_sizes"][1] intValue], [values[@"local_sizes"][2] intValue]);
-            [encoder dispatchThreadgroups:global_size threadsPerThreadgroup:local_size];
-            [encoder endEncoding];
-            [command_buffer commit];
-            [mtl_buffers_in_flight addObject: command_buffer];
         }
     }
     data = loadBytesFromFile(@"inf");
@@ -229,11 +214,9 @@ NSArray *yolo_classes;
         _h[datahash] = range_data;
         ptr += 0x28 + datalen;
     }
-    //NSLog(@"rory _h = %@",_h);
-    //CFRelease(data);
     string_data = [[NSString alloc] initWithData:range_data encoding:NSUTF8StringEncoding];
-    //NSLog(@"rory string data = %@",string_data);
     _q = [NSMutableArray array];
+    ops = @[@"BufferAlloc", @"BufferFree", @"CopyIn", @"CopyOut", @"ProgramExec"];
     regex = [NSRegularExpression regularExpressionWithPattern:[NSString stringWithFormat:@"(%@)\\(", [ops componentsJoinedByString:@"|"]] options:0 error:nil];
     lastIndex = 0;
     [regex enumerateMatchesInString:string_data options:0 range:NSMakeRange(0, string_data.length) usingBlock:^(NSTextCheckingResult *match, NSMatchingFlags flags, BOOL *stop) {
