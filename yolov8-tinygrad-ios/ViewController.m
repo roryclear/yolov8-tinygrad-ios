@@ -6,12 +6,12 @@
 @interface ViewController () <AVCaptureVideoDataOutputSampleBufferDelegate>
 
 @property (nonatomic, strong) AVCaptureSession *session;
-@property (nonatomic, strong) UIImageView *imageView; // To display the camera feed
-@property (nonatomic, strong) UILabel *fpsLabel;     // To display FPS
-@property (nonatomic, assign) uint8_t *pixelArray;  // To store the pixel data
-@property (nonatomic, assign) NSUInteger totalBytes; // To track pixel array size
-@property (nonatomic, assign) CFTimeInterval lastFrameTime; // To calculate FPS
-@property (nonatomic, assign) NSUInteger frameCount; // Frame counter for FPS
+@property (nonatomic, strong) UIImageView *imageView;
+@property (nonatomic, strong) UILabel *fpsLabel;
+@property (nonatomic, assign) uint8_t *pixelArray;
+@property (nonatomic, assign) NSUInteger totalBytes;
+@property (nonatomic, assign) CFTimeInterval lastFrameTime;
+@property (nonatomic, assign) NSUInteger frameCount;
 
 @end
 
@@ -154,10 +154,8 @@ NSArray *yolo_classes;
         _h[datahash] = range_data;
         ptr += 0x28 + datalen;
     }
-    //NSLog(@"rory _h = %@",_h);
     CFRelease(data);
     string_data = [[NSString alloc] initWithData:range_data encoding:NSUTF8StringEncoding];
-    //NSLog(@"rory string data = %@",string_data);
     _q = [NSMutableArray array];
     NSArray *ops = @[@"BufferAlloc", @"BufferFree", @"CopyIn", @"CopyOut", @"ProgramAlloc", @"ProgramFree", @"ProgramExec"];
     NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:[NSString stringWithFormat:@"(%@)\\(", [ops componentsJoinedByString:@"|"]] options:0 error:nil];
@@ -176,14 +174,6 @@ NSArray *yolo_classes;
             id<MTLBuffer> buffer = buffers[values[@"buffer_num"][0]];
             NSData *data = _h[values[@"datahash"][0]];
             memcpy(buffer.contents, data.bytes, data.length);
-        } else if ([values[@"op"] isEqualToString:@"CopyOut"]) {
-            for(int i = 0; i < mtl_buffers_in_flight.count; i++){
-                [mtl_buffers_in_flight[i] waitUntilCompleted];
-            }
-            [mtl_buffers_in_flight removeAllObjects];
-            id<MTLBuffer> buffer = buffers[values[@"buffer_num"][0]];
-            const void *rawData = buffer.contents;
-            //sendHTTPResponse(handle, rawData, buffer.length);
         } else if ([values[@"op"] isEqualToString:@"ProgramAlloc"]) {
             if ([pipeline_states objectForKey:@[values[@"name"][0],values[@"datahash"][0]]]) continue;
             NSString *prg = [[NSString alloc] initWithData:_h[values[@"datahash"][0]] encoding:NSUTF8StringEncoding];
@@ -203,11 +193,6 @@ NSArray *yolo_classes;
         } else if ([values[@"op"] isEqualToString:@"ProgramFree"]) {
             [pipeline_states removeObjectForKey:@[values[@"name"][0],values[@"datahash"][0]]];
         } else if ([values[@"op"] isEqualToString:@"ProgramExec"]) {
-            NSInteger max_size = [pipeline_states[@[values[@"name"][0],values[@"datahash"][0]]] maxTotalThreadsPerThreadgroup];
-            //if(max_size < [values[@"local_sizes"][0] intValue]*[values[@"local_sizes"][1] intValue]*[values[@"local_sizes"][2] intValue]) {
-            //    sendHTTPResponse(handle, "inf", 3);
-            //    return;
-            //}
             id<MTLCommandBuffer> command_buffer = [mtl_queue commandBuffer];
             id<MTLComputeCommandEncoder> encoder = [command_buffer computeCommandEncoder];
             [encoder setComputePipelineState:pipeline_states[@[values[@"name"][0],values[@"datahash"][0]]]];
@@ -223,12 +208,6 @@ NSArray *yolo_classes;
             [encoder dispatchThreadgroups:global_size threadsPerThreadgroup:local_size];
             [encoder endEncoding];
             [command_buffer commit];
-            if([values[@"wait"][0] isEqualToString:@"True"]) {
-                [command_buffer waitUntilCompleted];
-                float time = (float)(command_buffer.GPUEndTime - command_buffer.GPUStartTime);
-                const char *time_string = [[NSString stringWithFormat:@"%e", time] UTF8String];
-                //sendHTTPResponse(handle, time_string, strlen(time_string));
-            }
             [mtl_buffers_in_flight addObject: command_buffer];
         }
     }
@@ -358,46 +337,35 @@ CGFloat iouBetweenBox(NSArray *box1, NSArray *box2) {
 }
 
 UIImage *drawSquareOnImage(UIImage *image, CGFloat xOrigin, CGFloat yOrigin, CGFloat bottomLeftX, CGFloat bottomLeftY, NSString *className) {
-    // Calculate width and height of the square
     CGFloat width = bottomLeftX - xOrigin;
     CGFloat height = bottomLeftY - yOrigin;
-
-    // Create a graphics context with the image size
     UIGraphicsBeginImageContext(image.size);
     CGContextRef context = UIGraphicsGetCurrentContext();
 
-    // Draw the original image in the context
     [image drawAtPoint:CGPointZero];
 
-    // Set the stroke color and line width based on class
     UIColor *color = classColorMap[className] ?: [UIColor blackColor]; // Default to black if class not found
     CGContextSetStrokeColorWithColor(context, color.CGColor);
     CGContextSetLineWidth(context, 2.0);
 
-    // Draw the square
     CGRect squareRect = CGRectMake(xOrigin, yOrigin, width, height);
     CGContextAddRect(context, squareRect);
     CGContextStrokePath(context);
 
-    // Set text attributes
     NSDictionary *textAttributes = @{
         NSFontAttributeName: [UIFont systemFontOfSize:12],
         NSForegroundColorAttributeName: [UIColor whiteColor]
     };
 
-    // Measure the text size
     NSString *labelText = [className lowercaseString];
     CGSize textSize = [labelText sizeWithAttributes:textAttributes];
 
-    // Draw the filled rectangle for the label background
     CGRect textBackgroundRect = CGRectMake(xOrigin, yOrigin, textSize.width + 4, textSize.height + 2); // Add padding
     CGContextSetFillColorWithColor(context, color.CGColor);
     CGContextFillRect(context, textBackgroundRect);
 
-    // Draw the class label
     [labelText drawAtPoint:CGPointMake(xOrigin + 2, yOrigin + 1) withAttributes:textAttributes]; // Adjust for padding
 
-    // Get the new image with the square and label drawn on it
     UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
 
@@ -501,34 +469,27 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
     if ([connection isVideoOrientationSupported]) {
         connection.videoOrientation = AVCaptureVideoOrientationPortrait; // Set orientation to portrait
     }
-
-    // Start the session
     [self.session startRunning];
 }
 
 #pragma mark - Process Frames
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
     @autoreleasepool {
-        // Get the image buffer
         CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
         CIImage *ciImage = [CIImage imageWithCVPixelBuffer:imageBuffer];
 
-        // Get the dimensions of the image buffer
         size_t width = CVPixelBufferGetWidth(imageBuffer);
         size_t height = CVPixelBufferGetHeight(imageBuffer);
 
-        // Calculate the cropping rectangle for the center square
         CGFloat cropSize = MIN(width, height);
         CGRect cropRect = CGRectMake((width - cropSize) / 2.0, (height - cropSize) / 2.0, cropSize, cropSize);
         CIImage *croppedImage = [ciImage imageByCroppingToRect:cropRect];
 
-        // Resize to 416x416
         CGSize targetSize = CGSizeMake(416, 416);
         CGFloat scaleX = targetSize.width / cropSize;
         CGFloat scaleY = targetSize.height / cropSize;
         CIImage *resizedImage = [croppedImage imageByApplyingTransform:CGAffineTransformMakeScale(scaleX, scaleY)];
 
-        // Convert to UIImage
         CIContext *context = [CIContext context];
         CGImageRef cgImage = [context createCGImage:resizedImage fromRect:CGRectMake(0, 0, targetSize.width, targetSize.height)];
         UIImage *uiImage = [UIImage imageWithCGImage:cgImage];
@@ -546,8 +507,6 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
                     CFDataRef rawData = CGDataProviderCopyData(CGImageGetDataProvider(cgImage));
                     const UInt8 *rawBytes = CFDataGetBytePtr(rawData);
                     size_t length = CFDataGetLength(rawData);
-
-                    // Calculate the new size for RGB data
                     size_t rgbLength = (length / 4) * 3;
                     UInt8 *rgbData = (UInt8 *)malloc(rgbLength);
 
@@ -556,13 +515,8 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
                         rgbData[j + 1] = rawBytes[i + 1]; // Green
                         rgbData[j + 2] = rawBytes[i + 2]; // Blue
                     }
-
                     id<MTLBuffer> buffer = buffers[@"640"];
-
-                    // Copy the RGB data into the Metal buffer
                     memcpy(buffer.contents, rgbData, rgbLength);
-
-                    // Free the allocated memory and release rawData
                     free(rgbData);
                     CFRelease(rawData);
                 }
@@ -580,8 +534,6 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
                     uiImage = drawSquareOnImage(uiImage, [output[i][0] floatValue], [output[i][1] floatValue], [output[i][2] floatValue], [output[i][3] floatValue],output[i][4	]);
                 }
                 free(floatArray);
-                NSInteger *x = 1; //todo delete
-                //sendHTTPResponse(handle, rawData, buffer.length);
             } else if ([values[@"op"] isEqualToString:@"ProgramAlloc"]) {
                 if ([pipeline_states objectForKey:@[values[@"name"][0],values[@"datahash"][0]]]) continue;
                 NSString *prg = [[NSString alloc] initWithData:_h[values[@"datahash"][0]] encoding:NSUTF8StringEncoding];
@@ -601,11 +553,6 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
             } else if ([values[@"op"] isEqualToString:@"ProgramFree"]) {
                 [pipeline_states removeObjectForKey:@[values[@"name"][0],values[@"datahash"][0]]];
             } else if ([values[@"op"] isEqualToString:@"ProgramExec"]) {
-                NSInteger max_size = [pipeline_states[@[values[@"name"][0],values[@"datahash"][0]]] maxTotalThreadsPerThreadgroup];
-                //if(max_size < [values[@"local_sizes"][0] intValue]*[values[@"local_sizes"][1] intValue]*[values[@"local_sizes"][2] intValue]) {
-                //    sendHTTPResponse(handle, "inf", 3);
-                //    return;
-                //}
                 id<MTLCommandBuffer> command_buffer = [mtl_queue commandBuffer];
                 id<MTLComputeCommandEncoder> encoder = [command_buffer computeCommandEncoder];
                 [encoder setComputePipelineState:pipeline_states[@[values[@"name"][0],values[@"datahash"][0]]]];
@@ -621,18 +568,11 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
                 [encoder dispatchThreadgroups:global_size threadsPerThreadgroup:local_size];
                 [encoder endEncoding];
                 [command_buffer commit];
-                if([values[@"wait"][0] isEqualToString:@"True"]) {
-                    [command_buffer waitUntilCompleted];
-                    float time = (float)(command_buffer.GPUEndTime - command_buffer.GPUStartTime);
-                    const char *time_string = [[NSString stringWithFormat:@"%e", time] UTF8String];
-                    //sendHTTPResponse(handle, time_string, strlen(time_string));
-                }
                 [mtl_buffers_in_flight addObject: command_buffer];
             }
         }
 
         CGImageRelease(cgImage);
-        // Update the display and pixel array
         dispatch_async(dispatch_get_main_queue(), ^{
             self.imageView.image = uiImage;
             [self updatePixelArrayWithImage:uiImage];
@@ -655,12 +595,9 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
         self.pixelArray = malloc(self.totalBytes);
     }
 
-    // Create a context
     CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
     CGContextRef context = CGBitmapContextCreate(self.pixelArray, width, height, 8, bytesPerRow, colorSpace, kCGImageAlphaPremultipliedLast);
     CGColorSpaceRelease(colorSpace);
-
-    // Draw the image into the context
     CGContextDrawImage(context, CGRectMake(0, 0, width, height), cgImage);
     CGContextRelease(context);
 }
