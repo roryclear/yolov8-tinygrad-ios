@@ -188,6 +188,23 @@ NSArray *yolo_classes;
                                                                                             reflection:&reflection
                                                                                                  error:&error];
             [pipeline_states setObject:pipeline_state forKey:@[values[@"name"][0],values[@"datahash"][0]]];
+        } else if ([values[@"op"] isEqualToString:@"ProgramExec"]) {
+            id<MTLCommandBuffer> command_buffer = [mtl_queue commandBuffer];
+            id<MTLComputeCommandEncoder> encoder = [command_buffer computeCommandEncoder];
+            [encoder setComputePipelineState:pipeline_states[@[values[@"name"][0],values[@"datahash"][0]]]];
+            for(int i = 0; i < [(NSArray *)values[@"bufs"] count]; i++){
+                [encoder setBuffer:buffers[values[@"bufs"][i]] offset:0 atIndex:i];
+            }
+            for (int i = 0; i < [(NSArray *)values[@"vals"] count]; i++) {
+                NSInteger value = [values[@"vals"][i] integerValue];
+                [encoder setBytes:&value length:sizeof(NSInteger) atIndex:i + [(NSArray *)values[@"bufs"] count]];
+            }
+            MTLSize global_size = MTLSizeMake([values[@"global_sizes"][0] intValue], [values[@"global_sizes"][1] intValue], [values[@"global_sizes"][2] intValue]);
+            MTLSize local_size = MTLSizeMake([values[@"local_sizes"][0] intValue], [values[@"local_sizes"][1] intValue], [values[@"local_sizes"][2] intValue]);
+            [encoder dispatchThreadgroups:global_size threadsPerThreadgroup:local_size];
+            [encoder endEncoding];
+            [command_buffer commit];
+            [mtl_buffers_in_flight addObject: command_buffer];
         }
     }
     data = loadBytesFromFile(@"inf");
