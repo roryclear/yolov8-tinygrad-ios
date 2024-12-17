@@ -157,7 +157,8 @@ NSArray *yolo_classes;
     CFRelease(data);
     string_data = [[NSString alloc] initWithData:range_data encoding:NSUTF8StringEncoding];
     _q = [NSMutableArray array];
-    NSArray *ops = @[@"BufferAlloc", @"CopyIn", @"ProgramAlloc"];
+    NSMutableArray *_q_exec = [NSMutableArray array];
+    NSArray *ops = @[@"BufferAlloc", @"CopyIn", @"ProgramAlloc",@"ProgramExec"];
     NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:[NSString stringWithFormat:@"(%@)\\(", [ops componentsJoinedByString:@"|"]] options:0 error:nil];
     __block NSInteger lastIndex = 0;
     [regex enumerateMatchesInString:string_data options:0 range:NSMakeRange(0, string_data.length) usingBlock:^(NSTextCheckingResult *match, NSMatchingFlags flags, BOOL *stop) {
@@ -188,21 +189,13 @@ NSArray *yolo_classes;
                                                                                             reflection:&reflection
                                                                                                  error:&error];
             [pipeline_states setObject:pipeline_state forKey:@[values[@"name"][0],values[@"datahash"][0]]];
+        } else if ([values[@"op"] isEqualToString:@"ProgramExec"]) {
+            [_q_exec addObject:values];
         }
     }
+    _q = [_q_exec mutableCopy];
     [_h removeAllObjects];
-    
-    string_data = [[NSString alloc] initWithData:range_data encoding:NSUTF8StringEncoding];
-    _q = [NSMutableArray array];
-    ops = @[@"ProgramExec"];
-    regex = [NSRegularExpression regularExpressionWithPattern:[NSString stringWithFormat:@"(%@)\\(", [ops componentsJoinedByString:@"|"]] options:0 error:nil];
-    lastIndex = 0;
-    [regex enumerateMatchesInString:string_data options:0 range:NSMakeRange(0, string_data.length) usingBlock:^(NSTextCheckingResult *match, NSMatchingFlags flags, BOOL *stop) {
-        [_q addObject:extractValues([[string_data substringWithRange:NSMakeRange(lastIndex, match.range.location - lastIndex)] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@", "]])];
-        lastIndex = match.range.location;
-    }];
-    [_q addObject:extractValues([[string_data substringFromIndex:lastIndex] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@", "]])];
-    
+        
     // Set up the UI
     [self setupUI];
     
@@ -468,27 +461,24 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
         CFRelease(rawData);
         
         for (NSMutableDictionary *values in _q) {
-            if ([values[@"op"] isEqualToString:@"ProgramExec"]) {
-                id<MTLCommandBuffer> command_buffer = [mtl_queue commandBuffer];
-                id<MTLComputeCommandEncoder> encoder = [command_buffer computeCommandEncoder];
-                [encoder setComputePipelineState:pipeline_states[@[values[@"name"][0],values[@"datahash"][0]]]];
-                for(int i = 0; i < [(NSArray *)values[@"bufs"] count]; i++){
-                    [encoder setBuffer:buffers[values[@"bufs"][i]] offset:0 atIndex:i];
-                }
-                for (int i = 0; i < [(NSArray *)values[@"vals"] count]; i++) {
-                    NSInteger value = [values[@"vals"][i] integerValue];
-                    [encoder setBytes:&value length:sizeof(NSInteger) atIndex:i + [(NSArray *)values[@"bufs"] count]];
-                }
-                MTLSize global_size = MTLSizeMake([values[@"global_sizes"][0] intValue], [values[@"global_sizes"][1] intValue], [values[@"global_sizes"][2] intValue]);
-                MTLSize local_size = MTLSizeMake([values[@"local_sizes"][0] intValue], [values[@"local_sizes"][1] intValue], [values[@"local_sizes"][2] intValue]);
-                [encoder dispatchThreadgroups:global_size threadsPerThreadgroup:local_size];
-                [encoder endEncoding];
-                [command_buffer commit];
-                [mtl_buffers_in_flight addObject: command_buffer];
+            id<MTLCommandBuffer> command_buffer = [mtl_queue commandBuffer];
+            id<MTLComputeCommandEncoder> encoder = [command_buffer computeCommandEncoder];
+            [encoder setComputePipelineState:pipeline_states[@[values[@"name"][0],values[@"datahash"][0]]]];
+            for(int i = 0; i < [(NSArray *)values[@"bufs"] count]; i++){
+                [encoder setBuffer:buffers[values[@"bufs"][i]] offset:0 atIndex:i];
             }
+            for (int i = 0; i < [(NSArray *)values[@"vals"] count]; i++) {
+                NSInteger value = [values[@"vals"][i] integerValue];
+                [encoder setBytes:&value length:sizeof(NSInteger) atIndex:i + [(NSArray *)values[@"bufs"] count]];
+            }
+            MTLSize global_size = MTLSizeMake([values[@"global_sizes"][0] intValue], [values[@"global_sizes"][1] intValue], [values[@"global_sizes"][2] intValue]);
+            MTLSize local_size = MTLSizeMake([values[@"local_sizes"][0] intValue], [values[@"local_sizes"][1] intValue], [values[@"local_sizes"][2] intValue]);
+            [encoder dispatchThreadgroups:global_size threadsPerThreadgroup:local_size];
+            [encoder endEncoding];
+            [command_buffer commit];
+            [mtl_buffers_in_flight addObject: command_buffer];
         }
-        
-        //todo put this in copyout or ?
+
         for(int i = 0; i < mtl_buffers_in_flight.count; i++){
             [mtl_buffers_in_flight[i] waitUntilCompleted];
         }
@@ -502,7 +492,6 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
             uiImage = drawSquareOnImage(uiImage, [output[i][0] floatValue], [output[i][1] floatValue], [output[i][2] floatValue], [output[i][3] floatValue],output[i][4    ]);
         }
         free(floatArray);
-        //exit(0);
 
         CGImageRelease(cgImage);
         dispatch_async(dispatch_get_main_queue(), ^{
