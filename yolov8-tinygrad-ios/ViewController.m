@@ -261,7 +261,7 @@ CFDataRef loadBytesFromFile(NSString *fileName) {
 NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
     NSMutableDictionary<NSString *, id> *values = [@{@"op": [x componentsSeparatedByString:@"("][0]} mutableCopy];
     NSDictionary<NSString *, NSString *> *patterns = @{@"name": @"name='([^']+)'",@"datahash": @"datahash='([^']+)'",@"global_sizes": @"global_size=\\(([^)]+)\\)",
-        @"local_sizes": @"local_size=\\(([^)]+)\\)",@"wait": @"wait=(True|False)",@"bufs": @"bufs=\\(([^)]+)\\)",@"vals": @"vals=\\(([^)]+)\\)",
+        @"local_sizes": @"local_size=\\(([^)]+)\\)",@"bufs": @"bufs=\\(([^)]+)\\)",@"vals": @"vals=\\(([^)]+)\\)",
         @"buffer_num": @"buffer_num=(\\d+)",@"size": @"size=(\\d+)"};
     [patterns enumerateKeysAndObjectsUsingBlock:^(NSString *key, NSString *pattern, BOOL *stop) {
         NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:pattern options:0 error:nil];
@@ -284,7 +284,7 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
 #pragma mark - Setup Camera
 - (void)setupCamera {
     self.session = [[AVCaptureSession alloc] init];
-    self.session.sessionPreset = AVCaptureSessionPreset640x480; // Adjust resolution as needed
+    self.session.sessionPreset = AVCaptureSessionPreset640x480;
     AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
     NSError *error = nil;
     AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice:device error:&error];
@@ -294,7 +294,6 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
     dispatch_queue_t queue = dispatch_queue_create("VideoQueue", DISPATCH_QUEUE_SERIAL);
     [output setSampleBufferDelegate:self queue:queue];
     [self.session addOutput:output];
-    
     AVCaptureConnection *connection = [output connectionWithMediaType:AVMediaTypeVideo];
     if ([connection isVideoOrientationSupported]) {
     connection.videoOrientation = AVCaptureVideoOrientationPortrait;
@@ -391,11 +390,6 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
     NSUInteger bytesPerRow = bytesPerPixel * width;
     self.totalBytes = bytesPerRow * height;
 
-    // Allocate buffer if necessary
-    if (self.pixelArray == NULL) {
-        self.pixelArray = malloc(self.totalBytes);
-    }
-
     CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
     CGContextRef context = CGBitmapContextCreate(self.pixelArray, width, height, 8, bytesPerRow, colorSpace, kCGImageAlphaPremultipliedLast);
     CGColorSpaceRelease(colorSpace);
@@ -417,14 +411,6 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
         }
     } else {
         self.lastFrameTime = currentTime;
-    }
-}
-
-#pragma mark - Clean Up
-- (void)dealloc {
-    [self.session stopRunning];
-    if (self.pixelArray) {
-        free(self.pixelArray);
     }
 }
 @end
