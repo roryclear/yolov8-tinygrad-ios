@@ -190,28 +190,8 @@ NSArray *yolo_classes;
             [pipeline_states setObject:pipeline_state forKey:@[values[@"name"][0],values[@"datahash"][0]]];
         }
     }
-    data = loadBytesFromFile(@"load_and_inf"); //todo, use same file, one load?
+    [_h removeAllObjects];
     
-    bytes = CFDataGetBytePtr(data);
-    length = CFDataGetLength(data);
-
-    _h = [[NSMutableDictionary alloc] init];
-    ptr = 0;
-    datahash = [NSMutableString stringWithCapacity:0x40];
-    while (ptr < length) {
-        NSData *slicedData = [NSData dataWithBytes:bytes + ptr + 0x20 length:0x28 - 0x20];
-        uint64_t datalen = 0;
-        [slicedData getBytes:&datalen length:sizeof(datalen)];
-        datalen = CFSwapInt64LittleToHost(datalen);
-        const UInt8 *datahash_bytes = bytes + ptr;
-        datahash = [NSMutableString stringWithCapacity:0x40];
-        for (int i = 0; i < 0x20; i++) {
-            [datahash appendFormat:@"%02x", datahash_bytes[i]];
-        }
-        range_data = [NSData dataWithBytes:bytes + (ptr + 0x28) length:datalen];
-        _h[datahash] = range_data;
-        ptr += 0x28 + datalen;
-    }
     string_data = [[NSString alloc] initWithData:range_data encoding:NSUTF8StringEncoding];
     _q = [NSMutableArray array];
     ops = @[@"ProgramExec"];
