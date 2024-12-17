@@ -129,28 +129,22 @@ NSArray *yolo_classes;
     }
     _q = [_q_exec mutableCopy];
     [_h removeAllObjects];
-        
-    // Set up the UI
+
     [self setupUI];
-    
-    // Start the camera session
     [self setupCamera];
 }
 
 #pragma mark - Setup UI
 - (void)setupUI {
-    // Calculate the size and position for a square view
     CGFloat squareSize = MIN(self.view.bounds.size.width, self.view.bounds.size.height);
     CGFloat xOffset = (self.view.bounds.size.width - squareSize) / 2.0;
     CGFloat yOffset = (self.view.bounds.size.height - squareSize) / 2.0;
-
-    // Create a square UIImageView for the camera feed
+    
     self.imageView = [[UIImageView alloc] initWithFrame:CGRectMake(xOffset, yOffset, squareSize, squareSize)];
     self.imageView.contentMode = UIViewContentModeScaleAspectFill; // Preserve aspect ratio
     self.imageView.clipsToBounds = YES; // Clip to square boundaries
     [self.view addSubview:self.imageView];
     
-    // Create an FPS label
     self.fpsLabel = [[UILabel alloc] initWithFrame:CGRectMake(10, 50, 150, 30)];
     self.fpsLabel.backgroundColor = [UIColor colorWithWhite:0 alpha:0.5];
     self.fpsLabel.textColor = [UIColor whiteColor];
@@ -178,7 +172,6 @@ NSArray *processOutput(const float *output, int outputLength, float imgWidth, fl
 
         if (prob < 0.25) continue;
 
-        NSString *label = yolo_classes[classId][0];
         float xc = output[index];
         float yc = output[numPredictions + index];
         float w = output[2 * numPredictions + index];
@@ -219,78 +212,44 @@ CGFloat iouBetweenBox(NSArray *box1, NSArray *box2) {
     return intersectionBetweenBox(box1, box2) / unionBetweenBox(box1, box2);
 }
 
-UIImage *drawSquareOnImage(UIImage *image, CGFloat xOrigin, CGFloat yOrigin, CGFloat bottomLeftX, CGFloat bottomLeftY, int class) {
-    NSString *className = yolo_classes[class][0];
+UIImage *drawSquareOnImage(UIImage *image, CGFloat xOrigin, CGFloat yOrigin, CGFloat bottomLeftX, CGFloat bottomLeftY, int classIndex) {
+    NSString *className = yolo_classes[classIndex][0];
+    UIColor *color = yolo_classes[classIndex][1];
     CGFloat width = bottomLeftX - xOrigin;
     CGFloat height = bottomLeftY - yOrigin;
     UIGraphicsBeginImageContext(image.size);
     CGContextRef context = UIGraphicsGetCurrentContext();
     [image drawAtPoint:CGPointZero];
-    UIColor *color = yolo_classes[class][1];
     CGContextSetStrokeColorWithColor(context, color.CGColor);
     CGContextSetLineWidth(context, 2.0);
-
-    CGRect squareRect = CGRectMake(xOrigin, yOrigin, width, height);
-    CGContextAddRect(context, squareRect);
+    CGContextAddRect(context, CGRectMake(xOrigin, yOrigin, width, height));
     CGContextStrokePath(context);
 
-    NSDictionary *textAttributes = @{
-        NSFontAttributeName: [UIFont systemFontOfSize:12],
-        NSForegroundColorAttributeName: [UIColor whiteColor]
-    };
-
+    NSDictionary *textAttributes = @{NSFontAttributeName: [UIFont systemFontOfSize:12], NSForegroundColorAttributeName: [UIColor whiteColor]};
     NSString *labelText = [className lowercaseString];
     CGSize textSize = [labelText sizeWithAttributes:textAttributes];
-
-    CGRect textBackgroundRect = CGRectMake(xOrigin, yOrigin, textSize.width + 4, textSize.height + 2); // Add padding
     CGContextSetFillColorWithColor(context, color.CGColor);
-    CGContextFillRect(context, textBackgroundRect);
-
-    [labelText drawAtPoint:CGPointMake(xOrigin + 2, yOrigin + 1) withAttributes:textAttributes]; // Adjust for padding
+    CGContextFillRect(context, CGRectMake(xOrigin, yOrigin, textSize.width + 4, textSize.height + 2));
+    [labelText drawAtPoint:CGPointMake(xOrigin + 2, yOrigin + 1) withAttributes:textAttributes];
 
     UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
-
     return newImage;
 }
 
 CGFloat unionBetweenBox(NSArray *box1, NSArray *box2) {
-    CGFloat box1X1 = [box1[0] floatValue];
-    CGFloat box1Y1 = [box1[1] floatValue];
-    CGFloat box1X2 = [box1[2] floatValue];
-    CGFloat box1Y2 = [box1[3] floatValue];
-    CGFloat box2X1 = [box2[0] floatValue];
-    CGFloat box2Y1 = [box2[1] floatValue];
-    CGFloat box2X2 = [box2[2] floatValue];
-    CGFloat box2Y2 = [box2[3] floatValue];
-
-    CGFloat box1Area = (box1X2 - box1X1) * (box1Y2 - box1Y1);
-    CGFloat box2Area = (box2X2 - box2X1) * (box2Y2 - box2Y1);
-
+    CGFloat box1Area = ([box1[2] floatValue] - [box1[0] floatValue]) * ([box1[3] floatValue] - [box1[1] floatValue]);
+    CGFloat box2Area = ([box2[2] floatValue] - [box2[0] floatValue]) * ([box2[3] floatValue] - [box2[1] floatValue]);
     return box1Area + box2Area - intersectionBetweenBox(box1, box2);
 }
 
 CGFloat intersectionBetweenBox(NSArray *box1, NSArray *box2) {
-    CGFloat box1X1 = [box1[0] floatValue];
-    CGFloat box1Y1 = [box1[1] floatValue];
-    CGFloat box1X2 = [box1[2] floatValue];
-    CGFloat box1Y2 = [box1[3] floatValue];
-    CGFloat box2X1 = [box2[0] floatValue];
-    CGFloat box2Y1 = [box2[1] floatValue];
-    CGFloat box2X2 = [box2[2] floatValue];
-    CGFloat box2Y2 = [box2[3] floatValue];
-
-    CGFloat x1 = MAX(box1X1, box2X1);
-    CGFloat y1 = MAX(box1Y1, box2Y1);
-    CGFloat x2 = MIN(box1X2, box2X2);
-    CGFloat y2 = MIN(box1Y2, box2Y2);
-
-    CGFloat intersectionWidth = MAX(0, x2 - x1);
-    CGFloat intersectionHeight = MAX(0, y2 - y1);
-
-    return intersectionWidth * intersectionHeight;
+    CGFloat x1 = MAX([box1[0] floatValue], [box2[0] floatValue]);
+    CGFloat y1 = MAX([box1[1] floatValue], [box2[1] floatValue]);
+    CGFloat x2 = MIN([box1[2] floatValue], [box2[2] floatValue]);
+    CGFloat y2 = MIN([box1[3] floatValue], [box2[3] floatValue]);
+    return MAX(0, x2 - x1) * MAX(0, y2 - y1);
 }
-
 
 CFDataRef loadBytesFromFile(NSString *fileName) {
     NSString *documentsPath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
@@ -338,7 +297,7 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
     
     AVCaptureConnection *connection = [output connectionWithMediaType:AVMediaTypeVideo];
     if ([connection isVideoOrientationSupported]) {
-        connection.videoOrientation = AVCaptureVideoOrientationPortrait;
+    connection.videoOrientation = AVCaptureVideoOrientationPortrait;
     }
     [self.session startRunning];
 }
