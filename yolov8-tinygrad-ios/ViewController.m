@@ -157,7 +157,7 @@ NSArray *yolo_classes;
     CFRelease(data);
     string_data = [[NSString alloc] initWithData:range_data encoding:NSUTF8StringEncoding];
     _q = [NSMutableArray array];
-    NSArray *ops = @[@"BufferAlloc", @"BufferFree", @"CopyIn", @"ProgramAlloc"];
+    NSArray *ops = @[@"BufferAlloc", @"CopyIn", @"ProgramAlloc"];
     NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:[NSString stringWithFormat:@"(%@)\\(", [ops componentsJoinedByString:@"|"]] options:0 error:nil];
     __block NSInteger lastIndex = 0;
     [regex enumerateMatchesInString:string_data options:0 range:NSMakeRange(0, string_data.length) usingBlock:^(NSTextCheckingResult *match, NSMatchingFlags flags, BOOL *stop) {
@@ -168,8 +168,6 @@ NSArray *yolo_classes;
     for (NSMutableDictionary *values in _q) {
         if ([values[@"op"] isEqualToString:@"BufferAlloc"]) {
             [buffers setObject:[device newBufferWithLength:[values[@"size"][0] intValue] options:MTLResourceStorageModeShared] forKey:values[@"buffer_num"][0]];
-        } else if ([values[@"op"] isEqualToString:@"BufferFree"]) {
-            //[buffers removeObjectForKey: values[@"buffer_num"][0]];
         } else if ([values[@"op"] isEqualToString:@"CopyIn"]) {
             id<MTLBuffer> buffer = buffers[values[@"buffer_num"][0]];
             NSData *data = _h[values[@"datahash"][0]];
@@ -216,7 +214,7 @@ NSArray *yolo_classes;
     }
     string_data = [[NSString alloc] initWithData:range_data encoding:NSUTF8StringEncoding];
     _q = [NSMutableArray array];
-    ops = @[@"BufferAlloc", @"BufferFree", @"CopyIn", @"ProgramExec"];
+    ops = @[@"ProgramExec"];
     regex = [NSRegularExpression regularExpressionWithPattern:[NSString stringWithFormat:@"(%@)\\(", [ops componentsJoinedByString:@"|"]] options:0 error:nil];
     lastIndex = 0;
     [regex enumerateMatchesInString:string_data options:0 range:NSMakeRange(0, string_data.length) usingBlock:^(NSTextCheckingResult *match, NSMatchingFlags flags, BOOL *stop) {
@@ -473,38 +471,24 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
         CGImageRef cgImage = [context createCGImage:resizedImage fromRect:CGRectMake(0, 0, targetSize.width, targetSize.height)];
         UIImage *uiImage = [UIImage imageWithCGImage:cgImage];
         
+        CFDataRef rawData = CGDataProviderCopyData(CGImageGetDataProvider(cgImage));
+        const UInt8 *rawBytes = CFDataGetBytePtr(rawData);
+        size_t length = CFDataGetLength(rawData);
+        size_t rgbLength = (length / 4) * 3;
+        UInt8 *rgbData = (UInt8 *)malloc(rgbLength);
+        
+        for (size_t i = 0, j = 0; i < length; i += 4, j += 3) {
+            rgbData[j] = rawBytes[i];         // Red
+            rgbData[j + 1] = rawBytes[i + 1]; // Green
+            rgbData[j + 2] = rawBytes[i + 2]; // Blue
+        }
+        id<MTLBuffer> buffer = buffers[@"359"];
+        memcpy(buffer.contents, rgbData, rgbLength);
+        free(rgbData);
+        CFRelease(rawData);
+        
         for (NSMutableDictionary *values in _q) {
-            if ([values[@"op"] isEqualToString:@"BufferAlloc"]) {
-                //[buffers setObject:[device newBufferWithLength:[values[@"size"][0] intValue] options:MTLResourceStorageModeShared] forKey:values[@"buffer_num"][0]];
-            } else if ([values[@"op"] isEqualToString:@"BufferFree"]) {
-                //[buffers removeObjectForKey: values[@"buffer_num"][0]];
-            } else if ([values[@"op"] isEqualToString:@"CopyIn"]) {
-                if([values[@"buffer_num"][0] isEqualToString:@"359"]) {
-                    CFDataRef rawData = CGDataProviderCopyData(CGImageGetDataProvider(cgImage));
-                    const UInt8 *rawBytes = CFDataGetBytePtr(rawData);
-                    size_t length = CFDataGetLength(rawData);
-                    size_t rgbLength = (length / 4) * 3;
-                    UInt8 *rgbData = (UInt8 *)malloc(rgbLength);
-                    
-                    for (size_t i = 0, j = 0; i < length; i += 4, j += 3) {
-                        rgbData[j] = rawBytes[i];         // Red
-                        rgbData[j + 1] = rawBytes[i + 1]; // Green
-                        rgbData[j + 2] = rawBytes[i + 2]; // Blue
-                    }
-                    id<MTLBuffer> buffer = buffers[@"359"];
-                    memcpy(buffer.contents, rgbData, rgbLength);
-                    free(rgbData);
-                    CFRelease(rawData);
-                } else {
-                    
-                    NSLog(@"else %@",values[@"buffer_num"][0]);
-                    if (![@[@"1"] containsObject:values[@"buffer_num"][0]]) {
-                        id<MTLBuffer> buffer = buffers[values[@"buffer_num"][0]];
-                        NSData *data = _h[values[@"datahash"][0]];
-                        memcpy(buffer.contents, data.bytes, data.length);
-                    }
-                }
-            } else if ([values[@"op"] isEqualToString:@"ProgramExec"]) {
+            if ([values[@"op"] isEqualToString:@"ProgramExec"]) {
                 id<MTLCommandBuffer> command_buffer = [mtl_queue commandBuffer];
                 id<MTLComputeCommandEncoder> encoder = [command_buffer computeCommandEncoder];
                 [encoder setComputePipelineState:pipeline_states[@[values[@"name"][0],values[@"datahash"][0]]]];
@@ -529,7 +513,7 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
             [mtl_buffers_in_flight[i] waitUntilCompleted];
         }
         [mtl_buffers_in_flight removeAllObjects];
-        id<MTLBuffer> buffer = buffers[@"636"];
+        buffer = buffers[@"636"];
         const void *bufferPointer = buffer.contents;
         float *floatArray = malloc(buffer.length);
         memcpy(floatArray, bufferPointer, buffer.length);
