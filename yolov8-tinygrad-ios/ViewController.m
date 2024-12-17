@@ -37,100 +37,34 @@ NSArray *yolo_classes;
     mtl_buffers_in_flight = [[NSMutableArray alloc] init];
     
     yolo_classes = @[
-        @"person", @"bicycle", @"car", @"motorcycle", @"airplane", @"bus", @"train", @"truck", @"boat",
-        @"traffic light", @"fire hydrant", @"stop sign", @"parking meter", @"bench", @"bird", @"cat", @"dog", @"horse",
-        @"sheep", @"cow", @"elephant", @"bear", @"zebra", @"giraffe", @"backpack", @"umbrella", @"handbag", @"tie", @"suitcase",
-        @"frisbee", @"skis", @"snowboard", @"sports ball", @"kite", @"baseball bat", @"baseball glove", @"skateboard",
-        @"surfboard", @"tennis racket", @"bottle", @"wine glass", @"cup", @"fork", @"knife", @"spoon", @"bowl", @"banana", @"apple",
-        @"sandwich", @"orange", @"broccoli", @"carrot", @"hot dog", @"pizza", @"donut", @"cake", @"chair", @"couch", @"potted plant",
-        @"bed", @"dining table", @"toilet", @"tv", @"laptop", @"mouse", @"remote", @"keyboard", @"cell phone", @"microwave", @"oven",
-        @"toaster", @"sink", @"refrigerator", @"book", @"clock", @"vase", @"scissors", @"teddy bear", @"hair drier", @"toothbrush"
+        @[@"person", [UIColor redColor]],@[@"bicycle", [UIColor greenColor]],@[@"car", [UIColor blueColor]],@[@"motorcycle", [UIColor cyanColor]],
+        @[@"airplane", [UIColor magentaColor]],@[@"bus", [UIColor yellowColor]],@[@"train", [UIColor orangeColor]],@[@"truck", [UIColor purpleColor]],
+        @[@"boat", [UIColor brownColor]],@[@"traffic light", [UIColor lightGrayColor]],@[@"fire hydrant", [UIColor darkGrayColor]],
+        @[@"stop sign", [UIColor whiteColor]],@[@"parking meter", [UIColor blackColor]],@[@"bench", [UIColor grayColor]],
+        @[@"bird", [UIColor darkTextColor]],@[@"cat", [UIColor lightTextColor]],@[@"dog", [UIColor systemPinkColor]],
+        @[@"horse", [UIColor systemTealColor]],@[@"sheep", [UIColor systemIndigoColor]],@[@"cow", [UIColor systemYellowColor]],
+        @[@"elephant", [UIColor systemPurpleColor]],@[@"bear", [UIColor systemGreenColor]],@[@"zebra", [UIColor systemBlueColor]],
+        @[@"giraffe", [UIColor systemOrangeColor]],@[@"backpack", [UIColor systemRedColor]],@[@"umbrella", [UIColor systemBrownColor]],
+        @[@"handbag", [UIColor systemCyanColor]],@[@"tie", [UIColor systemMintColor]],@[@"suitcase", [UIColor systemPurpleColor]],
+        @[@"frisbee", [UIColor systemPinkColor]],@[@"skis", [UIColor systemGreenColor]],@[@"snowboard", [UIColor systemYellowColor]],
+        @[@"sports ball", [UIColor systemOrangeColor]],@[@"kite", [UIColor systemRedColor]],@[@"baseball bat", [UIColor systemPinkColor]],
+        @[@"baseball glove", [UIColor systemPurpleColor]],@[@"skateboard", [UIColor systemCyanColor]],@[@"surfboard", [UIColor systemMintColor]],
+        @[@"tennis racket", [UIColor systemTealColor]],@[@"bottle", [UIColor systemIndigoColor]],@[@"wine glass", [UIColor systemYellowColor]],
+        @[@"cup", [UIColor systemRedColor]],@[@"fork", [UIColor systemGreenColor]],@[@"knife", [UIColor systemCyanColor]],
+        @[@"spoon", [UIColor systemOrangeColor]],@[@"bowl", [UIColor systemPurpleColor]],@[@"banana", [UIColor systemYellowColor]],
+        @[@"apple", [UIColor systemRedColor]],@[@"sandwich", [UIColor systemBrownColor]],@[@"orange", [UIColor systemOrangeColor]],
+        @[@"broccoli", [UIColor systemGreenColor]],@[@"carrot", [UIColor systemOrangeColor]],@[@"hot dog", [UIColor systemPinkColor]],
+        @[@"pizza", [UIColor systemRedColor]],@[@"donut", [UIColor systemPurpleColor]],@[@"cake", [UIColor systemYellowColor]],
+        @[@"chair", [UIColor systemBrownColor]],@[@"couch", [UIColor systemOrangeColor]],@[@"potted plant", [UIColor systemGreenColor]],
+        @[@"bed", [UIColor systemRedColor]],@[@"dining table", [UIColor systemPurpleColor]],@[@"toilet", [UIColor systemGrayColor]],
+        @[@"tv", [UIColor systemBlueColor]],@[@"laptop", [UIColor systemPurpleColor]],@[@"mouse", [UIColor systemRedColor]],
+        @[@"remote", [UIColor systemGrayColor]],@[@"keyboard", [UIColor systemYellowColor]],@[@"cell phone", [UIColor systemGreenColor]],
+        @[@"microwave", [UIColor systemBlueColor]],@[@"oven", [UIColor systemOrangeColor]],@[@"toaster", [UIColor systemBrownColor]],
+        @[@"sink", [UIColor systemGrayColor]],@[@"refrigerator", [UIColor systemTealColor]],@[@"book", [UIColor systemRedColor]],
+        @[@"clock", [UIColor systemYellowColor]],@[@"vase", [UIColor systemPurpleColor]],@[@"scissors", [UIColor systemGreenColor]],
+        @[@"teddy bear", [UIColor systemPinkColor]],@[@"hair drier", [UIColor systemGrayColor]],@[@"toothbrush", [UIColor systemBlueColor]]
     ];
-    
-    classColorMap = @{
-        @"person": [UIColor redColor],
-        @"bicycle": [UIColor greenColor],
-        @"car": [UIColor blueColor],
-        @"motorcycle": [UIColor cyanColor],
-        @"airplane": [UIColor magentaColor],
-        @"bus": [UIColor yellowColor],
-        @"train": [UIColor orangeColor],
-        @"truck": [UIColor purpleColor],
-        @"boat": [UIColor brownColor],
-        @"traffic light": [UIColor lightGrayColor],
-        @"fire hydrant": [UIColor darkGrayColor],
-        @"stop sign": [UIColor whiteColor],
-        @"parking meter": [UIColor blackColor],
-        @"bench": [UIColor grayColor],
-        @"bird": [UIColor darkTextColor],
-        @"cat": [UIColor lightTextColor],
-        @"dog": [UIColor systemPinkColor],
-        @"horse": [UIColor systemTealColor],
-        @"sheep": [UIColor systemIndigoColor],
-        @"cow": [UIColor systemYellowColor],
-        @"elephant": [UIColor systemPurpleColor],
-        @"bear": [UIColor systemGreenColor],
-        @"zebra": [UIColor systemBlueColor],
-        @"giraffe": [UIColor systemOrangeColor],
-        @"backpack": [UIColor systemRedColor],
-        @"umbrella": [UIColor systemBrownColor],
-        @"handbag": [UIColor systemCyanColor],
-        @"tie": [UIColor systemMintColor],
-        @"suitcase": [UIColor systemPurpleColor],
-        @"frisbee": [UIColor systemPinkColor],
-        @"skis": [UIColor systemGreenColor],
-        @"snowboard": [UIColor systemYellowColor],
-        @"sports ball": [UIColor systemOrangeColor],
-        @"kite": [UIColor systemRedColor],
-        @"baseball bat": [UIColor systemPinkColor],
-        @"baseball glove": [UIColor systemPurpleColor],
-        @"skateboard": [UIColor systemCyanColor],
-        @"surfboard": [UIColor systemMintColor],
-        @"tennis racket": [UIColor systemTealColor],
-        @"bottle": [UIColor systemIndigoColor],
-        @"wine glass": [UIColor systemYellowColor],
-        @"cup": [UIColor systemRedColor],
-        @"fork": [UIColor systemGreenColor],
-        @"knife": [UIColor systemCyanColor],
-        @"spoon": [UIColor systemOrangeColor],
-        @"bowl": [UIColor systemPurpleColor],
-        @"banana": [UIColor systemYellowColor],
-        @"apple": [UIColor systemRedColor],
-        @"sandwich": [UIColor systemBrownColor],
-        @"orange": [UIColor systemOrangeColor],
-        @"broccoli": [UIColor systemGreenColor],
-        @"carrot": [UIColor systemOrangeColor],
-        @"hot dog": [UIColor systemPinkColor],
-        @"pizza": [UIColor systemRedColor],
-        @"donut": [UIColor systemPurpleColor],
-        @"cake": [UIColor systemYellowColor],
-        @"chair": [UIColor systemBrownColor],
-        @"couch": [UIColor systemOrangeColor],
-        @"potted plant": [UIColor systemGreenColor],
-        @"bed": [UIColor systemRedColor],
-        @"dining table": [UIColor systemPurpleColor],
-        @"toilet": [UIColor systemGrayColor],
-        @"tv": [UIColor systemBlueColor],
-        @"laptop": [UIColor systemPurpleColor],
-        @"mouse": [UIColor systemRedColor],
-        @"remote": [UIColor systemGrayColor],
-        @"keyboard": [UIColor systemYellowColor],
-        @"cell phone": [UIColor systemGreenColor],
-        @"microwave": [UIColor systemBlueColor],
-        @"oven": [UIColor systemOrangeColor],
-        @"toaster": [UIColor systemBrownColor],
-        @"sink": [UIColor systemGrayColor],
-        @"refrigerator": [UIColor systemTealColor],
-        @"book": [UIColor systemRedColor],
-        @"clock": [UIColor systemYellowColor],
-        @"vase": [UIColor systemPurpleColor],
-        @"scissors": [UIColor systemGreenColor],
-        @"teddy bear": [UIColor systemPinkColor],
-        @"hair drier": [UIColor systemGrayColor],
-        @"toothbrush": [UIColor systemBlueColor]
-    };
 
-    
     data = loadBytesFromFile(@"load_and_inf");
     const UInt8 *bytes = CFDataGetBytePtr(data);
     NSInteger length = CFDataGetLength(data);
@@ -244,7 +178,7 @@ NSArray *processOutput(const float *output, int outputLength, float imgWidth, fl
 
         if (prob < 0.25) continue;
 
-        NSString *label = yolo_classes[classId];
+        NSString *label = yolo_classes[classId][0];
         float xc = output[index];
         float yc = output[numPredictions + index];
         float w = output[2 * numPredictions + index];
@@ -255,7 +189,7 @@ NSArray *processOutput(const float *output, int outputLength, float imgWidth, fl
         float x2 = (xc + w / 2) / modelInputSize * imgWidth;
         float y2 = (yc + h / 2) / modelInputSize * imgHeight;
 
-        [boxes addObject:@[@(x1), @(y1), @(x2), @(y2), label, @(prob)]];
+        [boxes addObject:@[@(x1), @(y1), @(x2), @(y2), @(classId), @(prob)]];
     }
 
     [boxes sortUsingComparator:^NSComparisonResult(NSArray *box1, NSArray *box2) {
@@ -278,7 +212,6 @@ NSArray *processOutput(const float *output, int outputLength, float imgWidth, fl
         }
         boxes = filteredBoxes;
     }
-
     return [result copy];
 }
 
@@ -286,15 +219,14 @@ CGFloat iouBetweenBox(NSArray *box1, NSArray *box2) {
     return intersectionBetweenBox(box1, box2) / unionBetweenBox(box1, box2);
 }
 
-UIImage *drawSquareOnImage(UIImage *image, CGFloat xOrigin, CGFloat yOrigin, CGFloat bottomLeftX, CGFloat bottomLeftY, NSString *className) {
+UIImage *drawSquareOnImage(UIImage *image, CGFloat xOrigin, CGFloat yOrigin, CGFloat bottomLeftX, CGFloat bottomLeftY, int class) {
+    NSString *className = yolo_classes[class][0];
     CGFloat width = bottomLeftX - xOrigin;
     CGFloat height = bottomLeftY - yOrigin;
     UIGraphicsBeginImageContext(image.size);
     CGContextRef context = UIGraphicsGetCurrentContext();
-
     [image drawAtPoint:CGPointZero];
-
-    UIColor *color = classColorMap[className] ?: [UIColor blackColor]; // Default to black if class not found
+    UIColor *color = yolo_classes[class][1];
     CGContextSetStrokeColorWithColor(context, color.CGColor);
     CGContextSetLineWidth(context, 2.0);
 
@@ -364,10 +296,6 @@ CFDataRef loadBytesFromFile(NSString *fileName) {
     NSString *documentsPath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
     NSString *filePath = [documentsPath stringByAppendingPathComponent:fileName];
     NSData *data = [NSData dataWithContentsOfFile:filePath];
-    if (!data) {
-        NSLog(@"Failed to load file at path: %@", filePath);
-        return NULL;
-    }
     return CFDataCreate(NULL, [data bytes], [data length]);
 }
 
@@ -398,26 +326,19 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
 - (void)setupCamera {
     self.session = [[AVCaptureSession alloc] init];
     self.session.sessionPreset = AVCaptureSessionPreset640x480; // Adjust resolution as needed
-
     AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
     NSError *error = nil;
     AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice:device error:&error];
-    if (!input) {
-        NSLog(@"Error accessing camera: %@", error.localizedDescription);
-        return;
-    }
     [self.session addInput:input];
-
     AVCaptureVideoDataOutput *output = [[AVCaptureVideoDataOutput alloc] init];
-    [output setAlwaysDiscardsLateVideoFrames:YES]; // Improve performance
+    [output setAlwaysDiscardsLateVideoFrames:YES];
     dispatch_queue_t queue = dispatch_queue_create("VideoQueue", DISPATCH_QUEUE_SERIAL);
     [output setSampleBufferDelegate:self queue:queue];
     [self.session addOutput:output];
     
-    // Ensure proper orientation
     AVCaptureConnection *connection = [output connectionWithMediaType:AVMediaTypeVideo];
     if ([connection isVideoOrientationSupported]) {
-        connection.videoOrientation = AVCaptureVideoOrientationPortrait; // Set orientation to portrait
+        connection.videoOrientation = AVCaptureVideoOrientationPortrait;
     }
     [self.session startRunning];
 }
@@ -489,7 +410,7 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
         memcpy(floatArray, bufferPointer, buffer.length);
         NSArray *output = processOutput(floatArray,buffer.length / 4,416,416);
         for(int i = 0; i < output.count; i++){
-            uiImage = drawSquareOnImage(uiImage, [output[i][0] floatValue], [output[i][1] floatValue], [output[i][2] floatValue], [output[i][3] floatValue],output[i][4    ]);
+            uiImage = drawSquareOnImage(uiImage, [output[i][0] floatValue], [output[i][1] floatValue], [output[i][2] floatValue], [output[i][3] floatValue],[output[i][4] intValue]);
         }
         free(floatArray);
 
