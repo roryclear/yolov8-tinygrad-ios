@@ -169,7 +169,7 @@ NSArray *yolo_classes;
         if ([values[@"op"] isEqualToString:@"BufferAlloc"]) {
             [buffers setObject:[device newBufferWithLength:[values[@"size"][0] intValue] options:MTLResourceStorageModeShared] forKey:values[@"buffer_num"][0]];
         } else if ([values[@"op"] isEqualToString:@"BufferFree"]) {
-            [buffers removeObjectForKey: values[@"buffer_num"][0]];
+            //[buffers removeObjectForKey: values[@"buffer_num"][0]];
         } else if ([values[@"op"] isEqualToString:@"CopyIn"]) {
             id<MTLBuffer> buffer = buffers[values[@"buffer_num"][0]];
             NSData *data = _h[values[@"datahash"][0]];
@@ -192,7 +192,7 @@ NSArray *yolo_classes;
             [pipeline_states setObject:pipeline_state forKey:@[values[@"name"][0],values[@"datahash"][0]]];
         }
     }
-    data = loadBytesFromFile(@"inf");
+    data = loadBytesFromFile(@"load_and_inf"); //todo, use same file, one load?
     
     bytes = CFDataGetBytePtr(data);
     length = CFDataGetLength(data);
@@ -475,25 +475,35 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
         
         for (NSMutableDictionary *values in _q) {
             if ([values[@"op"] isEqualToString:@"BufferAlloc"]) {
-                [buffers setObject:[device newBufferWithLength:[values[@"size"][0] intValue] options:MTLResourceStorageModeShared] forKey:values[@"buffer_num"][0]];
+                //[buffers setObject:[device newBufferWithLength:[values[@"size"][0] intValue] options:MTLResourceStorageModeShared] forKey:values[@"buffer_num"][0]];
             } else if ([values[@"op"] isEqualToString:@"BufferFree"]) {
-                [buffers removeObjectForKey: values[@"buffer_num"][0]];
+                //[buffers removeObjectForKey: values[@"buffer_num"][0]];
             } else if ([values[@"op"] isEqualToString:@"CopyIn"]) {
-                CFDataRef rawData = CGDataProviderCopyData(CGImageGetDataProvider(cgImage));
-                const UInt8 *rawBytes = CFDataGetBytePtr(rawData);
-                size_t length = CFDataGetLength(rawData);
-                size_t rgbLength = (length / 4) * 3;
-                UInt8 *rgbData = (UInt8 *)malloc(rgbLength);
-
-                for (size_t i = 0, j = 0; i < length; i += 4, j += 3) {
-                    rgbData[j] = rawBytes[i];         // Red
-                    rgbData[j + 1] = rawBytes[i + 1]; // Green
-                    rgbData[j + 2] = rawBytes[i + 2]; // Blue
+                if([values[@"buffer_num"][0] isEqualToString:@"359"]) {
+                    CFDataRef rawData = CGDataProviderCopyData(CGImageGetDataProvider(cgImage));
+                    const UInt8 *rawBytes = CFDataGetBytePtr(rawData);
+                    size_t length = CFDataGetLength(rawData);
+                    size_t rgbLength = (length / 4) * 3;
+                    UInt8 *rgbData = (UInt8 *)malloc(rgbLength);
+                    
+                    for (size_t i = 0, j = 0; i < length; i += 4, j += 3) {
+                        rgbData[j] = rawBytes[i];         // Red
+                        rgbData[j + 1] = rawBytes[i + 1]; // Green
+                        rgbData[j + 2] = rawBytes[i + 2]; // Blue
+                    }
+                    id<MTLBuffer> buffer = buffers[@"359"];
+                    memcpy(buffer.contents, rgbData, rgbLength);
+                    free(rgbData);
+                    CFRelease(rawData);
+                } else {
+                    
+                    NSLog(@"else %@",values[@"buffer_num"][0]);
+                    if (![@[@"1"] containsObject:values[@"buffer_num"][0]]) {
+                        id<MTLBuffer> buffer = buffers[values[@"buffer_num"][0]];
+                        NSData *data = _h[values[@"datahash"][0]];
+                        memcpy(buffer.contents, data.bytes, data.length);
+                    }
                 }
-                id<MTLBuffer> buffer = buffers[@"640"];
-                memcpy(buffer.contents, rgbData, rgbLength);
-                free(rgbData);
-                CFRelease(rawData);
             } else if ([values[@"op"] isEqualToString:@"ProgramExec"]) {
                 id<MTLCommandBuffer> command_buffer = [mtl_queue commandBuffer];
                 id<MTLComputeCommandEncoder> encoder = [command_buffer computeCommandEncoder];
@@ -519,7 +529,7 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
             [mtl_buffers_in_flight[i] waitUntilCompleted];
         }
         [mtl_buffers_in_flight removeAllObjects];
-        id<MTLBuffer> buffer = buffers[@"917"];
+        id<MTLBuffer> buffer = buffers[@"636"];
         const void *bufferPointer = buffer.contents;
         float *floatArray = malloc(buffer.length);
         memcpy(floatArray, bufferPointer, buffer.length);
@@ -528,6 +538,7 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
             uiImage = drawSquareOnImage(uiImage, [output[i][0] floatValue], [output[i][1] floatValue], [output[i][2] floatValue], [output[i][3] floatValue],output[i][4    ]);
         }
         free(floatArray);
+        //exit(0);
 
         CGImageRelease(cgImage);
         dispatch_async(dispatch_get_main_queue(), ^{
