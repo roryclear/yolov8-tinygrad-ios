@@ -27,7 +27,7 @@ NSMutableArray *_q;
 NSMutableDictionary *_h;
 NSMutableDictionary *classColorMap;
 NSArray *yolo_classes;
-NSString *output_buffer; //
+NSString *input_buffer;
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -108,7 +108,7 @@ NSString *output_buffer; //
             id<MTLBuffer> buffer = buffers[values[@"buffer_num"][0]];
             NSData *data = _h[values[@"datahash"][0]];
             memcpy(buffer.contents, data.bytes, data.length);
-            output_buffer = values[@"buffer_num"][0];
+            input_buffer = values[@"buffer_num"][0];
         } else if ([values[@"op"] isEqualToString:@"ProgramAlloc"]) {
             if ([pipeline_states objectForKey:@[values[@"name"][0],values[@"datahash"][0]]]) continue;
             NSString *prg = [[NSString alloc] initWithData:_h[values[@"datahash"][0]] encoding:NSUTF8StringEncoding];
@@ -341,7 +341,7 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
             rgbData[j + 1] = rawBytes[i + 1]; // Green
             rgbData[j + 2] = rawBytes[i + 2]; // Blue
         }
-        id<MTLBuffer> buffer = buffers[output_buffer];
+        id<MTLBuffer> buffer = buffers[input_buffer];
         memcpy(buffer.contents, rgbData, rgbLength);
         free(rgbData);
         CFRelease(rawData);
