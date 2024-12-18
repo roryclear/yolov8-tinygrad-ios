@@ -67,7 +67,15 @@ NSString *output_buffer;
         @[@"teddy bear", [UIColor systemPinkColor]],@[@"hair drier", [UIColor systemGrayColor]],@[@"toothbrush", [UIColor systemBlueColor]]
     ];
 
-    data = loadBytesFromFile(@"batch_req_416x416");
+    NSString *documentsPath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
+    NSString *filePath = [documentsPath stringByAppendingPathComponent:@"batch_req_416x416"];
+    if (![[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
+        NSData *data = [NSData dataWithContentsOfURL:[NSURL URLWithString:@"https://raw.githubusercontent.com/roryclear/yolov8-tinygrad-ios/main/batch_req_416x416"]];
+        [data writeToFile:filePath atomically:YES];
+    }
+    NSData *ns_data = [NSData dataWithContentsOfFile:filePath];
+    data = CFDataCreate(NULL, [ns_data bytes], [ns_data length]);
+    
     const UInt8 *bytes = CFDataGetBytePtr(data);
     NSInteger length = CFDataGetLength(data);
 
@@ -261,12 +269,6 @@ CGFloat intersectionBetweenBox(NSArray *box1, NSArray *box2) {
     return MAX(0, x2 - x1) * MAX(0, y2 - y1);
 }
 
-CFDataRef loadBytesFromFile(NSString *fileName) {
-    NSString *documentsPath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
-    NSString *filePath = [documentsPath stringByAppendingPathComponent:fileName];
-    NSData *data = [NSData dataWithContentsOfFile:filePath];
-    return CFDataCreate(NULL, [data bytes], [data length]);
-}
 
 NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
     NSMutableDictionary<NSString *, id> *values = [@{@"op": [x componentsSeparatedByString:@"("][0]} mutableCopy];
