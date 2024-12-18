@@ -217,21 +217,26 @@ UIImage *drawSquareOnImage(UIImage *image, CGFloat xOrigin, CGFloat yOrigin, CGF
     UIColor *color = yolo_classes[classIndex][1];
     CGFloat width = bottomLeftX - xOrigin;
     CGFloat height = bottomLeftY - yOrigin;
+
     UIGraphicsBeginImageContext(image.size);
     CGContextRef context = UIGraphicsGetCurrentContext();
     [image drawAtPoint:CGPointZero];
+
     CGContextSetStrokeColorWithColor(context, color.CGColor);
     CGContextSetLineWidth(context, 2.0);
     CGContextAddRect(context, CGRectMake(xOrigin, yOrigin, width, height));
     CGContextStrokePath(context);
 
-    NSDictionary *textAttributes = @{NSFontAttributeName: [UIFont systemFontOfSize:12], NSForegroundColorAttributeName: [UIColor whiteColor]};
+    NSDictionary *textAttributes = @{NSFontAttributeName: [UIFont systemFontOfSize:12],
+                                      NSForegroundColorAttributeName: [UIColor whiteColor]};
     NSString *labelText = [className lowercaseString];
     CGSize textSize = [labelText sizeWithAttributes:textAttributes];
-    CGContextSetFillColorWithColor(context, color.CGColor);
-    CGContextFillRect(context, CGRectMake(xOrigin, yOrigin, textSize.width + 4, textSize.height + 2));
-    [labelText drawAtPoint:CGPointMake(xOrigin + 2, yOrigin + 1) withAttributes:textAttributes];
 
+    CGFloat labelX = xOrigin - 2;
+    CGFloat labelY = yOrigin - textSize.height - 2;
+    CGContextSetFillColorWithColor(context, color.CGColor);
+    CGContextFillRect(context, CGRectMake(labelX, labelY, textSize.width + 4, textSize.height + 2));
+    [labelText drawAtPoint:CGPointMake(labelX + 2, labelY + 1) withAttributes:textAttributes];
     UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
     return newImage;
@@ -414,3 +419,4 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
     }
 }
 @end
+
