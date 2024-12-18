@@ -28,6 +28,7 @@ NSMutableDictionary *_h;
 NSMutableDictionary *classColorMap;
 NSArray *yolo_classes;
 NSString *input_buffer;
+NSString *output_buffer;
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -93,7 +94,7 @@ NSString *input_buffer;
     string_data = [[NSString alloc] initWithData:range_data encoding:NSUTF8StringEncoding];
     _q = [NSMutableArray array];
     NSMutableArray *_q_exec = [NSMutableArray array];
-    NSArray *ops = @[@"BufferAlloc", @"CopyIn", @"ProgramAlloc",@"ProgramExec"];
+    NSArray *ops = @[@"BufferAlloc", @"CopyIn", @"ProgramAlloc",@"ProgramExec",@"CopyOut"];
     NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:[NSString stringWithFormat:@"(%@)\\(", [ops componentsJoinedByString:@"|"]] options:0 error:nil];
     __block NSInteger lastIndex = 0;
     [regex enumerateMatchesInString:string_data options:0 range:NSMakeRange(0, string_data.length) usingBlock:^(NSTextCheckingResult *match, NSMatchingFlags flags, BOOL *stop) {
@@ -127,6 +128,8 @@ NSString *input_buffer;
             [pipeline_states setObject:pipeline_state forKey:@[values[@"name"][0],values[@"datahash"][0]]];
         } else if ([values[@"op"] isEqualToString:@"ProgramExec"]) {
             [_q_exec addObject:values];
+        } else if ([values[@"op"] isEqualToString:@"CopyOut"]) {
+            output_buffer = values[@"buffer_num"][0];
         }
     }
     _q = [_q_exec mutableCopy];
@@ -369,7 +372,7 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
             [mtl_buffers_in_flight[i] waitUntilCompleted];
         }
         [mtl_buffers_in_flight removeAllObjects];
-        buffer = buffers[@"636"];
+        buffer = buffers[output_buffer];
         const void *bufferPointer = buffer.contents;
         float *floatArray = malloc(buffer.length);
         memcpy(floatArray, bufferPointer, buffer.length);
