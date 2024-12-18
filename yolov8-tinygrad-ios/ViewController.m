@@ -67,7 +67,7 @@ NSString *output_buffer;
         @[@"teddy bear", [UIColor systemPinkColor]],@[@"hair drier", [UIColor systemGrayColor]],@[@"toothbrush", [UIColor systemBlueColor]]
     ];
 
-    data = loadBytesFromFile(@"load_and_inf");
+    data = loadBytesFromFile(@"batch_req_416x416");
     const UInt8 *bytes = CFDataGetBytePtr(data);
     NSInteger length = CFDataGetLength(data);
 
