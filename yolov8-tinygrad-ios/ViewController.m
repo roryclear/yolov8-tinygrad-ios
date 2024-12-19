@@ -12,6 +12,7 @@
 @property (nonatomic, assign) NSUInteger totalBytes;
 @property (nonatomic, assign) CFTimeInterval lastFrameTime;
 @property (nonatomic, assign) NSUInteger frameCount;
+UIImage *yolo(CGImageRef cgImage);
 
 @end
 
@@ -30,8 +31,15 @@ NSArray *yolo_classes;
 NSString *input_buffer;
 NSString *output_buffer;
 
+
 - (void)viewDidLoad {
     [super viewDidLoad];
+    [self setupYOLO];
+    [self setupUI];
+    [self setupCamera];
+}
+
+- (void)setupYOLO {
     pipeline_states = [[NSMutableDictionary alloc] init];
     buffers = [[NSMutableDictionary alloc] init];
     device = MTLCreateSystemDefaultDevice();
@@ -142,9 +150,6 @@ NSString *output_buffer;
     }
     _q = [_q_exec mutableCopy];
     [_h removeAllObjects];
-
-    [self setupUI];
-    [self setupCamera];
 }
 
 #pragma mark - Setup UI
@@ -313,19 +318,69 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
     [self.session startRunning];
 }
 
+- (UIImage *)yolo:(CGImageRef)cgImage {
+    UIImage *uiImage = [UIImage imageWithCGImage:cgImage];
+    CFDataRef rawData = CGDataProviderCopyData(CGImageGetDataProvider(cgImage));
+    const UInt8 *rawBytes = CFDataGetBytePtr(rawData);
+    size_t length = CFDataGetLength(rawData);
+    size_t rgbLength = (length / 4) * 3;
+    UInt8 *rgbData = (UInt8 *)malloc(rgbLength);
+    
+    for (size_t i = 0, j = 0; i < length; i += 4, j += 3) {
+        rgbData[j] = rawBytes[i];         // Red
+        rgbData[j + 1] = rawBytes[i + 1]; // Green
+        rgbData[j + 2] = rawBytes[i + 2]; // Blue
+    }
+    id<MTLBuffer> buffer = buffers[input_buffer];
+    memcpy(buffer.contents, rgbData, rgbLength);
+    free(rgbData);
+    CFRelease(rawData);
+    
+    for (NSMutableDictionary *values in _q) {
+        id<MTLCommandBuffer> command_buffer = [mtl_queue commandBuffer];
+        id<MTLComputeCommandEncoder> encoder = [command_buffer computeCommandEncoder];
+        [encoder setComputePipelineState:pipeline_states[@[values[@"name"][0],values[@"datahash"][0]]]];
+        for(int i = 0; i < [(NSArray *)values[@"bufs"] count]; i++){
+            [encoder setBuffer:buffers[values[@"bufs"][i]] offset:0 atIndex:i];
+        }
+        for (int i = 0; i < [(NSArray *)values[@"vals"] count]; i++) {
+            NSInteger value = [values[@"vals"][i] integerValue];
+            [encoder setBytes:&value length:sizeof(NSInteger) atIndex:i + [(NSArray *)values[@"bufs"] count]];
+        }
+        MTLSize global_size = MTLSizeMake([values[@"global_sizes"][0] intValue], [values[@"global_sizes"][1] intValue], [values[@"global_sizes"][2] intValue]);
+        MTLSize local_size = MTLSizeMake([values[@"local_sizes"][0] intValue], [values[@"local_sizes"][1] intValue], [values[@"local_sizes"][2] intValue]);
+        [encoder dispatchThreadgroups:global_size threadsPerThreadgroup:local_size];
+        [encoder endEncoding];
+        [command_buffer commit];
+        [mtl_buffers_in_flight addObject: command_buffer];
+    }
+
+    for(int i = 0; i < mtl_buffers_in_flight.count; i++){
+        [mtl_buffers_in_flight[i] waitUntilCompleted];
+    }
+    [mtl_buffers_in_flight removeAllObjects];
+    buffer = buffers[output_buffer];
+    const void *bufferPointer = buffer.contents;
+    float *floatArray = malloc(buffer.length);
+    memcpy(floatArray, bufferPointer, buffer.length);
+    NSArray *output = processOutput(floatArray,buffer.length / 4,416,416);
+    for(int i = 0; i < output.count; i++){
+        uiImage = drawSquareOnImage(uiImage, [output[i][0] floatValue], [output[i][1] floatValue], [output[i][2] floatValue], [output[i][3] floatValue],[output[i][4] intValue]);
+    }
+    free(floatArray);
+    return uiImage;
+}
+
 #pragma mark - Process Frames
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
     @autoreleasepool {
         CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
         CIImage *ciImage = [CIImage imageWithCVPixelBuffer:imageBuffer];
-
         size_t width = CVPixelBufferGetWidth(imageBuffer);
         size_t height = CVPixelBufferGetHeight(imageBuffer);
-
         CGFloat cropSize = MIN(width, height);
         CGRect cropRect = CGRectMake((width - cropSize) / 2.0, (height - cropSize) / 2.0, cropSize, cropSize);
         CIImage *croppedImage = [ciImage imageByCroppingToRect:cropRect];
-
         CGSize targetSize = CGSizeMake(416, 416);
         CGFloat scaleX = targetSize.width / cropSize;
         CGFloat scaleY = targetSize.height / cropSize;
@@ -333,57 +388,8 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
 
         CIContext *context = [CIContext context];
         CGImageRef cgImage = [context createCGImage:resizedImage fromRect:CGRectMake(0, 0, targetSize.width, targetSize.height)];
-        UIImage *uiImage = [UIImage imageWithCGImage:cgImage];
         
-        CFDataRef rawData = CGDataProviderCopyData(CGImageGetDataProvider(cgImage));
-        const UInt8 *rawBytes = CFDataGetBytePtr(rawData);
-        size_t length = CFDataGetLength(rawData);
-        size_t rgbLength = (length / 4) * 3;
-        UInt8 *rgbData = (UInt8 *)malloc(rgbLength);
-        
-        for (size_t i = 0, j = 0; i < length; i += 4, j += 3) {
-            rgbData[j] = rawBytes[i];         // Red
-            rgbData[j + 1] = rawBytes[i + 1]; // Green
-            rgbData[j + 2] = rawBytes[i + 2]; // Blue
-        }
-        id<MTLBuffer> buffer = buffers[input_buffer];
-        memcpy(buffer.contents, rgbData, rgbLength);
-        free(rgbData);
-        CFRelease(rawData);
-        
-        for (NSMutableDictionary *values in _q) {
-            id<MTLCommandBuffer> command_buffer = [mtl_queue commandBuffer];
-            id<MTLComputeCommandEncoder> encoder = [command_buffer computeCommandEncoder];
-            [encoder setComputePipelineState:pipeline_states[@[values[@"name"][0],values[@"datahash"][0]]]];
-            for(int i = 0; i < [(NSArray *)values[@"bufs"] count]; i++){
-                [encoder setBuffer:buffers[values[@"bufs"][i]] offset:0 atIndex:i];
-            }
-            for (int i = 0; i < [(NSArray *)values[@"vals"] count]; i++) {
-                NSInteger value = [values[@"vals"][i] integerValue];
-                [encoder setBytes:&value length:sizeof(NSInteger) atIndex:i + [(NSArray *)values[@"bufs"] count]];
-            }
-            MTLSize global_size = MTLSizeMake([values[@"global_sizes"][0] intValue], [values[@"global_sizes"][1] intValue], [values[@"global_sizes"][2] intValue]);
-            MTLSize local_size = MTLSizeMake([values[@"local_sizes"][0] intValue], [values[@"local_sizes"][1] intValue], [values[@"local_sizes"][2] intValue]);
-            [encoder dispatchThreadgroups:global_size threadsPerThreadgroup:local_size];
-            [encoder endEncoding];
-            [command_buffer commit];
-            [mtl_buffers_in_flight addObject: command_buffer];
-        }
-
-        for(int i = 0; i < mtl_buffers_in_flight.count; i++){
-            [mtl_buffers_in_flight[i] waitUntilCompleted];
-        }
-        [mtl_buffers_in_flight removeAllObjects];
-        buffer = buffers[output_buffer];
-        const void *bufferPointer = buffer.contents;
-        float *floatArray = malloc(buffer.length);
-        memcpy(floatArray, bufferPointer, buffer.length);
-        NSArray *output = processOutput(floatArray,buffer.length / 4,416,416);
-        for(int i = 0; i < output.count; i++){
-            uiImage = drawSquareOnImage(uiImage, [output[i][0] floatValue], [output[i][1] floatValue], [output[i][2] floatValue], [output[i][3] floatValue],[output[i][4] intValue]);
-        }
-        free(floatArray);
-
+        UIImage *uiImage = [self yolo:cgImage];
         CGImageRelease(cgImage);
         dispatch_async(dispatch_get_main_queue(), ^{
             self.imageView.image = uiImage;
