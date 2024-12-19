@@ -6,6 +6,9 @@
 @property (nonatomic, strong) AVCaptureSession *captureSession;
 @property (nonatomic, strong) AVCaptureVideoPreviewLayer *previewLayer;
 @property (nonatomic, strong) UIImage *latestFrame;  // Property to store the most recent frame
+@property (nonatomic, strong) UILabel *fpsLabel;  // Label to display the FPS
+@property (nonatomic, assign) CFTimeInterval lastFrameTime;  // Time when the last frame was captured
+@property (nonatomic, assign) NSUInteger frameCount;  // Number of frames captured
 @property (nonatomic, assign) AVCaptureVideoOrientation currentOrientation;  // Keep track of the current orientation
 
 @end
@@ -15,6 +18,7 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     [self setupCamera];
+    [self setupFPSLabel];
     [self setupNotification];
 }
 
@@ -36,7 +40,7 @@
 
 - (void)setupCamera {
     self.captureSession = [[AVCaptureSession alloc] init];
-    self.captureSession.sessionPreset = AVCaptureSessionPresetHigh;
+    self.captureSession.sessionPreset = AVCaptureSessionPreset1920x1080;
     
     // Configure camera input
     AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
@@ -62,6 +66,17 @@
     
     // Start the camera session
     [self.captureSession startRunning];
+}
+
+#pragma mark - Setup FPS Label
+
+- (void)setupFPSLabel {
+    self.fpsLabel = [[UILabel alloc] initWithFrame:CGRectMake(10, 30, 150, 30)];
+    self.fpsLabel.backgroundColor = [UIColor colorWithWhite:0 alpha:0.5];
+    self.fpsLabel.textColor = [UIColor whiteColor];
+    self.fpsLabel.font = [UIFont boldSystemFontOfSize:18];
+    self.fpsLabel.text = @"FPS: 0";
+    [self.view addSubview:self.fpsLabel];
 }
 
 #pragma mark - Handle Rotation
@@ -115,6 +130,23 @@
     }
 }
 
+- (UIImage *)cropAndResizeImage:(UIImage *)image toSize:(CGSize)size {
+    CGFloat sideLength = MIN(image.size.width, image.size.height);
+    CGRect cropRect = CGRectMake((image.size.width - sideLength) / 2.0,
+                                 (image.size.height - sideLength) / 2.0,
+                                 sideLength,
+                                 sideLength);
+
+    CGImageRef croppedImageRef = CGImageCreateWithImageInRect(image.CGImage, cropRect);
+    UIGraphicsBeginImageContextWithOptions(size, NO, 0.0);
+    [[UIImage imageWithCGImage:croppedImageRef] drawInRect:CGRectMake(0, 0, size.width, size.height)];
+    UIImage *resizedImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    CGImageRelease(croppedImageRef);
+
+    return resizedImage;
+}
+
 #pragma mark - AVCaptureVideoDataOutputSampleBufferDelegate
 
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
@@ -124,9 +156,33 @@
     CIContext *context = [CIContext contextWithOptions:nil];
     CGImageRef cgImage = [context createCGImage:ciImage fromRect:ciImage.extent];
     
-    self.latestFrame = [UIImage imageWithCGImage:cgImage];  // Store the most recent frame as a UIImage
+    //self.latestFrame = [UIImage imageWithCGImage:cgImage];
+    UIImage *originalImage = [UIImage imageWithCGImage:cgImage];
+    self.latestFrame = [self cropAndResizeImage:originalImage toSize:CGSizeMake(640, 640)];
     
     CGImageRelease(cgImage);
+    //usleep(100000);
+    
+    // Update FPS
+    [self updateFPS];
+}
+
+#pragma mark - Update FPS
+
+- (void)updateFPS {
+    CFTimeInterval currentTime = CACurrentMediaTime();
+    if (self.lastFrameTime > 0) {
+        CFTimeInterval deltaTime = currentTime - self.lastFrameTime;
+        self.frameCount++;
+        if (deltaTime >= 1.0) { // Update FPS every second
+            CGFloat fps = self.frameCount / deltaTime;
+            self.fpsLabel.text = [NSString stringWithFormat:@"FPS: %.1f", fps];
+            self.frameCount = 0;
+            self.lastFrameTime = currentTime;
+        }
+    } else {
+        self.lastFrameTime = currentTime;
+    }
 }
 
 @end
