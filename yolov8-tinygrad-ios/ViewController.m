@@ -230,11 +230,11 @@ CGFloat iouBetweenBox(NSArray *box1, NSArray *box2) {
     return intersectionBetweenBox(box1, box2) / unionBetweenBox(box1, box2);
 }
 
-UIImage *drawSquareOnImage(UIImage *image, CGFloat xOrigin, CGFloat yOrigin, CGFloat bottomLeftX, CGFloat bottomLeftY, int classIndex) {
+UIImage *drawSquareOnImage(UIImage *image, CGFloat xOrigin, CGFloat yOrigin, CGFloat bottomRightX, CGFloat bottomRightY, int classIndex) {
     NSString *className = yolo_classes[classIndex][0];
     UIColor *color = yolo_classes[classIndex][1];
-    CGFloat width = bottomLeftX - xOrigin;
-    CGFloat height = bottomLeftY - yOrigin;
+    CGFloat width = bottomRightX - xOrigin;
+    CGFloat height = bottomRightY    - yOrigin;
 
     UIGraphicsBeginImageContext(image.size);
     CGContextRef context = UIGraphicsGetCurrentContext();
