@@ -1,10 +1,12 @@
 #import "ViewController.h"
 #import <AVFoundation/AVFoundation.h>
 
-@interface ViewController ()
+@interface ViewController () <AVCaptureVideoDataOutputSampleBufferDelegate>
 
 @property (nonatomic, strong) AVCaptureSession *captureSession;
 @property (nonatomic, strong) AVCaptureVideoPreviewLayer *previewLayer;
+@property (nonatomic, strong) UIImage *latestFrame;  // Property to store the most recent frame
+@property (nonatomic, assign) AVCaptureVideoOrientation currentOrientation;  // Keep track of the current orientation
 
 @end
 
@@ -13,6 +15,21 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     [self setupCamera];
+    [self setupNotification];
+}
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    [self.captureSession stopRunning];
+    if (self.latestFrame) {
+        CGImageRelease(self.latestFrame.CGImage);
+    }
+}
+
+#pragma mark - Setup Notification
+
+- (void)setupNotification {
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleOrientationChange) name:UIDeviceOrientationDidChangeNotification object:nil];
 }
 
 #pragma mark - Camera Setup
@@ -30,6 +47,13 @@
         return;
     }
     [self.captureSession addInput:input];
+    
+    // Configure video data output
+    AVCaptureVideoDataOutput *output = [[AVCaptureVideoDataOutput alloc] init];
+    output.videoSettings = @{(NSString *)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA)};
+    output.alwaysDiscardsLateVideoFrames = YES;
+    [output setSampleBufferDelegate:self queue:dispatch_get_main_queue()];
+    [self.captureSession addOutput:output];
     
     // Configure preview layer
     self.previewLayer = [AVCaptureVideoPreviewLayer layerWithSession:self.captureSession];
@@ -49,7 +73,7 @@
     self.previewLayer.frame = [self frameForCurrentOrientation];
     
     // Update video orientation
-    self.previewLayer.connection.videoOrientation = [self videoOrientationForDeviceOrientation:[[UIDevice currentDevice] orientation]];
+    [self updateCameraOrientation];
 }
 
 - (CGRect)frameForCurrentOrientation {
@@ -58,6 +82,17 @@
     
     // Match the preview layer's frame to the screen size
     return CGRectMake(0, 0, width, height);
+}
+
+- (void)handleOrientationChange {
+    UIDeviceOrientation deviceOrientation = [[UIDevice currentDevice] orientation];
+    AVCaptureVideoOrientation newOrientation = [self videoOrientationForDeviceOrientation:deviceOrientation];
+    
+    // Only update orientation if it's different from the current orientation
+    if (newOrientation != self.currentOrientation) {
+        self.currentOrientation = newOrientation;
+        [self updateCameraOrientation];
+    }
 }
 
 - (AVCaptureVideoOrientation)videoOrientationForDeviceOrientation:(UIDeviceOrientation)deviceOrientation {
@@ -71,16 +106,30 @@
         case UIDeviceOrientationPortraitUpsideDown:
             return AVCaptureVideoOrientationPortraitUpsideDown;
         default:
-            return AVCaptureVideoOrientationPortrait;
+            return self.currentOrientation;  // Keep the current orientation if unknown
     }
 }
 
-#pragma mark - Memory Management
+- (void)updateCameraOrientation {
+    AVCaptureConnection *connection = self.previewLayer.connection;
+    if ([connection isVideoOrientationSupported]) {
+        connection.videoOrientation = self.currentOrientation;
+    }
+}
 
-- (void)dealloc {
-    [self.captureSession stopRunning];
+#pragma mark - AVCaptureVideoDataOutputSampleBufferDelegate
+
+- (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
+    CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+    CIImage *ciImage = [CIImage imageWithCVPixelBuffer:imageBuffer];
+    
+    CIContext *context = [CIContext contextWithOptions:nil];
+    CGImageRef cgImage = [context createCGImage:ciImage fromRect:ciImage.extent];
+    
+    self.latestFrame = [UIImage imageWithCGImage:cgImage];  // Store the most recent frame as a UIImage
+    
+    CGImageRelease(cgImage);
 }
 
 @end
-
 
