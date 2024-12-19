@@ -103,8 +103,6 @@
             return AVCaptureVideoOrientationLandscapeRight; // Opposite for camera
         case UIDeviceOrientationLandscapeRight:
             return AVCaptureVideoOrientationLandscapeLeft; // Opposite for camera
-        case UIDeviceOrientationPortraitUpsideDown:
-            return AVCaptureVideoOrientationPortraitUpsideDown;
         default:
             return self.currentOrientation;  // Keep the current orientation if unknown
     }
