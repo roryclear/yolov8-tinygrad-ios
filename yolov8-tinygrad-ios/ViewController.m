@@ -168,7 +168,7 @@ NSString *output_buffer;
 
 - (void)setupCamera {
     self.captureSession = [[AVCaptureSession alloc] init];
-    self.captureSession.sessionPreset = AVCaptureSessionPreset1920x1080;
+    self.captureSession.sessionPreset = AVCaptureSessionPresetPhoto;
     
     // Configure camera input
     AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
@@ -255,35 +255,84 @@ CGFloat iouBetweenBox(NSArray *box1, NSArray *box2) {
     return intersectionBetweenBox(box1, box2) / unionBetweenBox(box1, box2);
 }
 
-UIImage *drawSquareOnImage(UIImage *image, CGFloat xOrigin, CGFloat yOrigin, CGFloat bottomLeftX, CGFloat bottomLeftY, int classIndex) {
-    NSString *className = yolo_classes[classIndex][0];
+- (void)drawSquareWithTopLeftX:(CGFloat)xOrigin topLeftY:(CGFloat)yOrigin bottomRightX:(CGFloat)bottomRightX bottomRightY:(CGFloat)bottomRightY classIndex:(int)classIndex {
+    // Determine the smaller dimension of the screen
+    CGFloat minDimension = MIN(self.view.bounds.size.width, self.view.bounds.size.height);
+    
+    // Calculate the coordinates for the centered square
+    CGFloat leftEdgeX = (self.view.bounds.size.width - minDimension) / 2;
+    CGFloat topEdgeY = (self.view.bounds.size.height - minDimension) / 2;
+    
+    // Calculate scaled coordinates
+    CGFloat scaledXOrigin = leftEdgeX + (xOrigin / 416.0) * minDimension;
+    CGFloat scaledYOrigin = topEdgeY + (yOrigin / 416.0) * minDimension;
+    CGFloat scaledWidth = (bottomRightX - xOrigin) * (minDimension / 416.0);
+    CGFloat scaledHeight = (bottomRightY - yOrigin) * (minDimension / 416.0);
+
+    // Log the coordinates
+    NSLog(@"Square Coordinates: Top Left (%.2f, %.2f), Width (%.2f), Height (%.2f)", scaledXOrigin, scaledYOrigin, scaledWidth, scaledHeight);
+    
+    // Get the class color
     UIColor *color = yolo_classes[classIndex][1];
-    CGFloat width = bottomLeftX - xOrigin;
-    CGFloat height = bottomLeftY - yOrigin;
-
-    UIGraphicsBeginImageContext(image.size);
-    CGContextRef context = UIGraphicsGetCurrentContext();
-    [image drawAtPoint:CGPointZero];
-
-    CGContextSetStrokeColorWithColor(context, color.CGColor);
-    CGContextSetLineWidth(context, 2.0);
-    CGContextAddRect(context, CGRectMake(xOrigin, yOrigin, width, height));
-    CGContextStrokePath(context);
-
+    
+    // Create a CAShapeLayer to draw the square
+    CAShapeLayer *squareLayer = [CAShapeLayer layer];
+    squareLayer.name = @"rectangleLayer";
+    squareLayer.strokeColor = color.CGColor;
+    squareLayer.lineWidth = 2.0;
+    squareLayer.fillColor = [UIColor clearColor].CGColor;
+    squareLayer.path = [UIBezierPath bezierPathWithRect:CGRectMake(scaledXOrigin, scaledYOrigin, scaledWidth, scaledHeight)].CGPath;
+    
+    // Add the square layer to the view's layer
+    [self.view.layer addSublayer:squareLayer];
+    
+    // Draw the label
+    NSString *className = yolo_classes[classIndex][0];
     NSDictionary *textAttributes = @{NSFontAttributeName: [UIFont systemFontOfSize:12],
-                                      NSForegroundColorAttributeName: [UIColor whiteColor]};
+                                     NSForegroundColorAttributeName: [UIColor whiteColor]};
     NSString *labelText = [className lowercaseString];
     CGSize textSize = [labelText sizeWithAttributes:textAttributes];
-
-    CGFloat labelX = xOrigin - 2;
-    CGFloat labelY = yOrigin - textSize.height - 2;
-    CGContextSetFillColorWithColor(context, color.CGColor);
-    CGContextFillRect(context, CGRectMake(labelX, labelY, textSize.width + 4, textSize.height + 2));
-    [labelText drawAtPoint:CGPointMake(labelX + 2, labelY + 1) withAttributes:textAttributes];
-    UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    return newImage;
+    
+    CGFloat labelX = scaledXOrigin - 2;
+    CGFloat labelY = scaledYOrigin - textSize.height - 2;
+    
+    UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(labelX, labelY, textSize.width + 4, textSize.height + 2)];
+    label.backgroundColor = color;
+    label.textColor = [UIColor whiteColor];
+    label.font = [UIFont systemFontOfSize:12];
+    label.text = labelText;
+    
+    [self.view addSubview:label];
 }
+
+- (void)resetSquares {
+    // Remove any existing rectangle layers and labels
+    NSMutableArray *layersToRemove = [NSMutableArray array];
+    NSMutableArray *labelsToRemove = [NSMutableArray array];
+    
+    for (CALayer *layer in self.view.layer.sublayers) {
+        if ([layer.name isEqualToString:@"rectangleLayer"]) {
+            [layersToRemove addObject:layer];
+        }
+    }
+    
+    for (UIView *subview in self.view.subviews) {
+        if ([subview isKindOfClass:[UILabel class]]) {
+            [labelsToRemove addObject:subview];
+        }
+    }
+    
+    for (CALayer *layer in layersToRemove) {
+        [layer removeFromSuperlayer];
+    }
+    
+    for (UIView *label in labelsToRemove) {
+        [label removeFromSuperview];
+    }
+}
+
+
+
 
 CGFloat unionBetweenBox(NSArray *box1, NSArray *box2) {
     CGFloat box1Area = ([box1[2] floatValue] - [box1[0] floatValue]) * ([box1[3] floatValue] - [box1[1] floatValue]);
@@ -404,7 +453,7 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
     return resizedImage.CGImage;
 }
 
-- (UIImage *)yolo:(CGImageRef)cgImage {
+- (NSArray *)yolo:(CGImageRef)cgImage {
     UIImage *uiImage = [UIImage imageWithCGImage:cgImage];
     CFDataRef rawData = CGDataProviderCopyData(CGImageGetDataProvider(cgImage));
     const UInt8 *rawBytes = CFDataGetBytePtr(rawData);
@@ -452,13 +501,14 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
     NSArray *output = processOutput(floatArray,buffer.length / 4,416,416);
     NSMutableString *classNamesString = [NSMutableString string];
     for (int i = 0; i < output.count; i++) {
-        uiImage = drawSquareOnImage(uiImage, [output[i][0] floatValue], [output[i][1] floatValue], [output[i][2] floatValue], [output[i][3] floatValue], [output[i][4] intValue]);
+        //uiImage = drawSquareOnImage(uiImage, [output[i][0] floatValue], [output[i][1] floatValue], [output[i][2] floatValue], [output[i][3] floatValue], [output[i][4] intValue]);
         [classNamesString appendString:yolo_classes[[output[i][4] intValue]][0]];
         if (i < output.count - 1) [classNamesString appendString:@", "];
     }
     NSLog(@"Class Names: %@", classNamesString);
     free(floatArray);
-    return uiImage;
+    return output;
+    ///return uiImage;
 }
 
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
@@ -482,19 +532,24 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
     
     // Perform Metal operations on the main thread
     dispatch_async(dispatch_get_main_queue(), ^{
-        [self yolo:cgImage];
+        NSArray *output = [self yolo:cgImage];
         CGImageRelease(cgImage);
+
+        // Draw squares based on output
+        [self resetSquares]; // Reset previous squares before drawing new ones
+        for (int i = 0; i < output.count; i++) {
+            [self drawSquareWithTopLeftX:[output[i][0] floatValue]
+                                topLeftY:[output[i][1] floatValue]
+                            bottomRightX:[output[i][2] floatValue]
+                            bottomRightY:[output[i][3] floatValue]
+                              classIndex:[output[i][4] intValue]];
+        }
     });
     
     [self updateFPS];
 }
 
-
-
-
-
 #pragma mark - Update FPS
-
 - (void)updateFPS {
     CFTimeInterval currentTime = CACurrentMediaTime();
     if (self.lastFrameTime > 0) {
