@@ -474,10 +474,9 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
     CIImage *resizedImage = [ciImage imageByApplyingTransform:CGAffineTransformMakeScale(scaleX, scaleY)];
     
     self.latestFrame = [UIImage imageWithCIImage:resizedImage];
-    NSLog(@"%f %f",self.latestFrame.size.width,self.latestFrame.size.height);
     CIContext *context = [CIContext context];
-    //TODO magic numbers all over the place
-    CGImageRef cgImage = [context createCGImage:resizedImage fromRect:CGRectMake(162, 0, targetSize.width, targetSize.height)];
+    int start_x = (self.latestFrame.size.width / 2) - self.latestFrame.size.height / 2;
+    CGImageRef cgImage = [context createCGImage:resizedImage fromRect:CGRectMake(start_x, 0, targetSize.width, targetSize.height)];
     
     self.latestFrame = [UIImage imageWithCGImage:cgImage];
     
