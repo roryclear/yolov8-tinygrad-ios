@@ -467,16 +467,17 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
     size_t width = CVPixelBufferGetWidth(imageBuffer);
     size_t height = CVPixelBufferGetHeight(imageBuffer);
     CGFloat cropSize = MIN(width, height);
-    CGRect cropRect = CGRectMake((width - cropSize) / 2.0, (height - cropSize) / 2.0, cropSize, cropSize);
-    CIImage *croppedImage = [ciImage imageByCroppingToRect:cropRect];
     
     CGSize targetSize = CGSizeMake(416, 416);
     CGFloat scaleX = targetSize.width / cropSize;
     CGFloat scaleY = targetSize.height / cropSize;
-    CIImage *resizedImage = [croppedImage imageByApplyingTransform:CGAffineTransformMakeScale(scaleX, scaleY)];
-
+    CIImage *resizedImage = [ciImage imageByApplyingTransform:CGAffineTransformMakeScale(scaleX, scaleY)];
+    
+    self.latestFrame = [UIImage imageWithCIImage:resizedImage];
+    NSLog(@"%f %f",self.latestFrame.size.width,self.latestFrame.size.height);
     CIContext *context = [CIContext context];
-    CGImageRef cgImage = [context createCGImage:resizedImage fromRect:CGRectMake(0, 0, targetSize.width, targetSize.height)];
+    //TODO magic numbers all over the place
+    CGImageRef cgImage = [context createCGImage:resizedImage fromRect:CGRectMake(162, 0, targetSize.width, targetSize.height)];
     
     self.latestFrame = [UIImage imageWithCGImage:cgImage];
     
