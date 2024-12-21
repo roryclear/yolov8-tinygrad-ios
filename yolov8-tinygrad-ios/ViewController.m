@@ -128,9 +128,10 @@ NSString *output_buffer;
     ];
 
     NSString *documentsPath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
-    NSString *filePath = [documentsPath stringByAppendingPathComponent:@"batch_req_416x416"];
+    NSString *filePath = [documentsPath stringByAppendingPathComponent:@"batch_req_640x640"];
     if (![[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
-        NSData *data = [NSData dataWithContentsOfURL:[NSURL URLWithString:@"https://raw.githubusercontent.com/roryclear/yolov8-tinygrad-ios/main/batch_req_416x416"]];
+        //todo add to main
+        NSData *data = [NSData dataWithContentsOfURL:[NSURL URLWithString:@"https://raw.githubusercontent.com/roryclear/yolov8-tinygrad-ios/landscape/batch_req_640x640"]];
         [data writeToFile:filePath atomically:YES];
     }
     NSData *ns_data = [NSData dataWithContentsOfFile:filePath];
@@ -252,7 +253,7 @@ NSString *output_buffer;
 
 NSArray *processOutput(const float *output, int outputLength, float imgWidth, float imgHeight) {
     NSMutableArray *boxes = [NSMutableArray array];
-    int modelInputSize = 416; // Replace this with your actual model input size
+    int modelInputSize = 640; // Replace this with your actual model input size
     int numPredictions = pow(modelInputSize / 32, 2) * 21;
 
     for (int index = 0; index < numPredictions; index++) {
@@ -318,10 +319,10 @@ CGFloat iouBetweenBox(NSArray *box1, NSArray *box2) {
     CGFloat topEdgeY = (self.view.bounds.size.height - minDimension) / 2;
     
     // Calculate scaled coordinates
-    CGFloat scaledXOrigin = leftEdgeX + (xOrigin / 416.0) * minDimension;
-    CGFloat scaledYOrigin = topEdgeY + (yOrigin / 416.0) * minDimension;
-    CGFloat scaledWidth = (bottomRightX - xOrigin) * (minDimension / 416.0);
-    CGFloat scaledHeight = (bottomRightY - yOrigin) * (minDimension / 416.0);
+    CGFloat scaledXOrigin = leftEdgeX + (xOrigin / 640.0) * minDimension;
+    CGFloat scaledYOrigin = topEdgeY + (yOrigin / 640.0) * minDimension;
+    CGFloat scaledWidth = (bottomRightX - xOrigin) * (minDimension / 640.0);
+    CGFloat scaledHeight = (bottomRightY - yOrigin) * (minDimension / 640.0);
 
     // Log the coordinates
     NSLog(@"Square Coordinates: Top Left (%.2f, %.2f), Width (%.2f), Height (%.2f)", scaledXOrigin, scaledYOrigin, scaledWidth, scaledHeight);
@@ -371,7 +372,7 @@ CGFloat iouBetweenBox(NSArray *box1, NSArray *box2) {
     }
     
     for (UIView *subview in self.view.subviews) {
-        if ([subview isKindOfClass:[UILabel class]]) {
+        if ([subview isKindOfClass:[UILabel class]] && subview != self.fpsLabel) {
             [labelsToRemove addObject:subview];
         }
     }
@@ -384,6 +385,7 @@ CGFloat iouBetweenBox(NSArray *box1, NSArray *box2) {
         [label removeFromSuperview];
     }
 }
+
 
 
 
@@ -552,7 +554,7 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
     const void *bufferPointer = buffer.contents;
     float *floatArray = malloc(buffer.length);
     memcpy(floatArray, bufferPointer, buffer.length);
-    NSArray *output = processOutput(floatArray,buffer.length / 4,416,416);
+    NSArray *output = processOutput(floatArray,buffer.length / 4,640,640);
     NSMutableString *classNamesString = [NSMutableString string];
     for (int i = 0; i < output.count; i++) {
         //uiImage = drawSquareOnImage(uiImage, [output[i][0] floatValue], [output[i][1] floatValue], [output[i][2] floatValue], [output[i][3] floatValue], [output[i][4] intValue]);
@@ -572,7 +574,7 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
     size_t height = CVPixelBufferGetHeight(imageBuffer);
     CGFloat cropSize = MIN(width, height);
     
-    CGSize targetSize = CGSizeMake(416, 416);
+    CGSize targetSize = CGSizeMake(640, 640);
     CGFloat scaleX = targetSize.width / cropSize;
     CGFloat scaleY = targetSize.height / cropSize;
     CIImage *resizedImage = [ciImage imageByApplyingTransform:CGAffineTransformMakeScale(scaleX, scaleY)];
