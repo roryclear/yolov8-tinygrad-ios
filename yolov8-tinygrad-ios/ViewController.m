@@ -89,8 +89,7 @@ NSString *output_buffer;
     NSString *documentsPath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
     NSString *filePath = [documentsPath stringByAppendingPathComponent:@"batch_req_640x640"];
     if (![[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
-        //todo add to main
-        NSData *data = [NSData dataWithContentsOfURL:[NSURL URLWithString:@"https://raw.githubusercontent.com/roryclear/yolov8-tinygrad-ios/landscape/batch_req_640x640"]];
+        NSData *data = [NSData dataWithContentsOfURL:[NSURL URLWithString:@"https://raw.githubusercontent.com/roryclear/yolov8-tinygrad-ios/main/batch_req_640x640"]];
         [data writeToFile:filePath atomically:YES];
     }
     NSData *ns_data = [NSData dataWithContentsOfFile:filePath];
