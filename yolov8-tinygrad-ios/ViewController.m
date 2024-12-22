@@ -523,6 +523,7 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
         rgbData[j + 2] = rawBytes[i + 2]; // Blue
     }
     id<MTLBuffer> buffer = buffers[input_buffer];
+    memset(buffer.contents, 0, buffer.length);
     memcpy(buffer.contents, rgbData, rgbLength);
     free(rgbData);
     CFRelease(rawData);
