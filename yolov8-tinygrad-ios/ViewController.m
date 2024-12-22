@@ -314,14 +314,16 @@ CGFloat iouBetweenBox(NSArray *box1, NSArray *box2) {
     // Determine the smaller dimension of the screen
     CGFloat minDimension = MIN(self.view.bounds.size.width, self.view.bounds.size.height);
     
+    CGFloat aspect_ratio = 1560.0 / 1170.0; //todo hardcode
+    CGFloat height = 640 / aspect_ratio;
     // Calculate the coordinates for the centered square
-    CGFloat leftEdgeX = (self.view.bounds.size.width - minDimension) / 2;
+    CGFloat leftEdgeX = (self.view.bounds.size.width - (minDimension * aspect_ratio)) / 2;
     
     // Calculate scaled coordinates
-    CGFloat scaledXOrigin = leftEdgeX + (xOrigin / 640.0) * minDimension;
-    CGFloat scaledYOrigin = (yOrigin / 640.0) * minDimension;
-    CGFloat scaledWidth = (bottomRightX - xOrigin) * (minDimension / 640.0);
-    CGFloat scaledHeight = (bottomRightY - yOrigin) * (minDimension / 640.0);
+    CGFloat scaledXOrigin = leftEdgeX + (xOrigin * aspect_ratio / 640.0) * minDimension;
+    CGFloat scaledYOrigin = (yOrigin / height) * minDimension;
+    CGFloat scaledWidth = (bottomRightX - xOrigin) * (aspect_ratio * minDimension / 640.0);
+    CGFloat scaledHeight = (bottomRightY - yOrigin) * (minDimension / height);
 
     // Log the coordinates
     NSLog(@"Square Coordinates: Top Left (%.2f, %.2f), Width (%.2f), Height (%.2f)", scaledXOrigin, scaledYOrigin, scaledWidth, scaledHeight);
@@ -571,18 +573,26 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
     CIImage *ciImage = [CIImage imageWithCVPixelBuffer:imageBuffer];
     size_t width = CVPixelBufferGetWidth(imageBuffer);
     size_t height = CVPixelBufferGetHeight(imageBuffer);
-    CGFloat cropSize = MIN(width, height);
     
-    CGSize targetSize = CGSizeMake(640, 640);
-    CGFloat scaleX = targetSize.width / cropSize;
-    CGFloat scaleY = targetSize.height / cropSize;
+    NSLog(@"%zu %zu",width,height);
+
+    // Calculate the scale and target size
+    CGFloat targetWidth = 640.0;
+    CGFloat aspectRatio = (CGFloat)width / (CGFloat)height;
+    CGSize targetSize = CGSizeMake(targetWidth, targetWidth / aspectRatio);
+
+    // Scale the CIImage to the target size while maintaining the aspect ratio
+    CGFloat scaleX = targetSize.width / width;
+    CGFloat scaleY = targetSize.height / height;
     CIImage *resizedImage = [ciImage imageByApplyingTransform:CGAffineTransformMakeScale(scaleX, scaleY)];
-    
-    self.latestFrame = [UIImage imageWithCIImage:resizedImage];
+
+    // Crop the resized image to the target size
+    CGRect cropRect = CGRectMake(0, 0, targetSize.width, targetSize.height);
+    CIImage *croppedImage = [resizedImage imageByCroppingToRect:cropRect];
+
+    // Create the final UIImage
     CIContext *context = [CIContext context];
-    int start_x = (self.latestFrame.size.width / 2) - self.latestFrame.size.height / 2;
-    CGImageRef cgImage = [context createCGImage:resizedImage fromRect:CGRectMake(start_x, 0, targetSize.width, targetSize.height)];
-    
+    CGImageRef cgImage = [context createCGImage:croppedImage fromRect:cropRect];
     self.latestFrame = [UIImage imageWithCGImage:cgImage];
     
     // Perform Metal operations on the main thread
