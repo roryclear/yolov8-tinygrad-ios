@@ -310,19 +310,18 @@ CGFloat iouBetweenBox(NSArray *box1, NSArray *box2) {
     return intersectionBetweenBox(box1, box2) / unionBetweenBox(box1, box2);
 }
 
-- (void)drawSquareWithTopLeftX:(CGFloat)xOrigin topLeftY:(CGFloat)yOrigin bottomRightX:(CGFloat)bottomRightX bottomRightY:(CGFloat)bottomRightY classIndex:(int)classIndex {
+- (void)drawSquareWithTopLeftX:(CGFloat)xOrigin topLeftY:(CGFloat)yOrigin bottomRightX:(CGFloat)bottomRightX bottomRightY:(CGFloat)bottomRightY classIndex:(int)classIndex aspectRatio:(float)aspectRatio {
     // Determine the smaller dimension of the screen
     CGFloat minDimension = MIN(self.view.bounds.size.width, self.view.bounds.size.height);
     
-    CGFloat aspect_ratio = 1560.0 / 1170.0; //todo hardcode
-    CGFloat height = 640 / aspect_ratio;
+    CGFloat height = 640 / aspectRatio;
     // Calculate the coordinates for the centered square
-    CGFloat leftEdgeX = (self.view.bounds.size.width - (minDimension * aspect_ratio)) / 2;
+    CGFloat leftEdgeX = (self.view.bounds.size.width - (minDimension * aspectRatio)) / 2;
     
     // Calculate scaled coordinates
-    CGFloat scaledXOrigin = leftEdgeX + (xOrigin * aspect_ratio / 640.0) * minDimension;
+    CGFloat scaledXOrigin = leftEdgeX + (xOrigin * aspectRatio / 640.0) * minDimension;
     CGFloat scaledYOrigin = (yOrigin / height) * minDimension;
-    CGFloat scaledWidth = (bottomRightX - xOrigin) * (aspect_ratio * minDimension / 640.0);
+    CGFloat scaledWidth = (bottomRightX - xOrigin) * (aspectRatio * minDimension / 640.0);
     CGFloat scaledHeight = (bottomRightY - yOrigin) * (minDimension / height);
 
     // Log the coordinates
@@ -574,8 +573,7 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
     size_t width = CVPixelBufferGetWidth(imageBuffer);
     size_t height = CVPixelBufferGetHeight(imageBuffer);
     
-    NSLog(@"%zu %zu",width,height);
-
+    CGFloat aspect_ratio = (CGFloat)width / (CGFloat)height;
     // Calculate the scale and target size
     CGFloat targetWidth = 640.0;
     CGFloat aspectRatio = (CGFloat)width / (CGFloat)height;
@@ -607,7 +605,8 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
                                 topLeftY:[output[i][1] floatValue]
                             bottomRightX:[output[i][2] floatValue]
                             bottomRightY:[output[i][3] floatValue]
-                              classIndex:[output[i][4] intValue]];
+                              classIndex:[output[i][4] intValue]
+                             aspectRatio:aspect_ratio];
         }
     });
     
