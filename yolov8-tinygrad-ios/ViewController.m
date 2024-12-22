@@ -45,85 +45,44 @@ NSString *output_buffer;
     mtl_buffers_in_flight = [[NSMutableArray alloc] init];
     
     yolo_classes = @[
-        @[@"person", [UIColor redColor]],
-        @[@"bicycle", [UIColor greenColor]],
-        @[@"car", [UIColor blueColor]],
-        @[@"motorcycle", [UIColor cyanColor]],
-        @[@"airplane", [UIColor magentaColor]],
-        @[@"bus", [UIColor yellowColor]],
-        @[@"train", [UIColor orangeColor]],
-        @[@"truck", [UIColor purpleColor]],
-        @[@"boat", [UIColor brownColor]],
-        @[@"traffic light", [UIColor colorWithRed:0.5 green:0.7 blue:0.2 alpha:1.0]],
-        @[@"fire hydrant", [UIColor colorWithRed:0.8 green:0.1 blue:0.1 alpha:1.0]],
-        @[@"stop sign", [UIColor colorWithRed:0.3 green:0.3 blue:0.8 alpha:1.0]],
-        @[@"parking meter", [UIColor colorWithRed:0.7 green:0.5 blue:0.3 alpha:1.0]],
-        @[@"bench", [UIColor colorWithRed:0.4 green:0.4 blue:0.2 alpha:1.0]],
-        @[@"bird", [UIColor colorWithRed:0.1 green:0.5 blue:0.9 alpha:1.0]],
-        @[@"cat", [UIColor colorWithRed:0.8 green:0.2 blue:0.6 alpha:1.0]],
-        @[@"dog", [UIColor colorWithRed:0.9 green:0.3 blue:0.3 alpha:1.0]],
-        @[@"horse", [UIColor colorWithRed:0.2 green:0.6 blue:0.7 alpha:1.0]],
-        @[@"sheep", [UIColor colorWithRed:0.7 green:0.3 blue:0.5 alpha:1.0]],
-        @[@"cow", [UIColor colorWithRed:0.4 green:0.8 blue:0.4 alpha:1.0]],
-        @[@"elephant", [UIColor colorWithRed:0.3 green:0.4 blue:0.9 alpha:1.0]],
-        @[@"bear", [UIColor colorWithRed:0.6 green:0.2 blue:0.8 alpha:1.0]],
-        @[@"zebra", [UIColor colorWithRed:0.8 green:0.5 blue:0.2 alpha:1.0]],
-        @[@"giraffe", [UIColor colorWithRed:0.5 green:0.9 blue:0.1 alpha:1.0]],
-        @[@"backpack", [UIColor colorWithRed:0.3 green:0.7 blue:0.4 alpha:1.0]],
-        @[@"umbrella", [UIColor colorWithRed:0.4 green:0.6 blue:0.9 alpha:1.0]],
-        @[@"handbag", [UIColor colorWithRed:0.9 green:0.2 blue:0.5 alpha:1.0]],
-        @[@"tie", [UIColor colorWithRed:0.5 green:0.3 blue:0.7 alpha:1.0]],
-        @[@"suitcase", [UIColor colorWithRed:0.6 green:0.7 blue:0.2 alpha:1.0]],
-        @[@"frisbee", [UIColor colorWithRed:0.7 green:0.2 blue:0.4 alpha:1.0]],
-        @[@"skis", [UIColor colorWithRed:0.3 green:0.9 blue:0.3 alpha:1.0]],
-        @[@"snowboard", [UIColor colorWithRed:0.8 green:0.1 blue:0.6 alpha:1.0]],
-        @[@"sports ball", [UIColor colorWithRed:0.4 green:0.3 blue:0.8 alpha:1.0]],
-        @[@"kite", [UIColor colorWithRed:0.2 green:0.5 blue:0.7 alpha:1.0]],
-        @[@"baseball bat", [UIColor colorWithRed:0.6 green:0.4 blue:0.2 alpha:1.0]],
-        @[@"baseball glove", [UIColor colorWithRed:0.7 green:0.1 blue:0.4 alpha:1.0]],
-        @[@"skateboard", [UIColor colorWithRed:0.5 green:0.8 blue:0.5 alpha:1.0]],
-        @[@"surfboard", [UIColor colorWithRed:0.8 green:0.3 blue:0.6 alpha:1.0]],
-        @[@"tennis racket", [UIColor colorWithRed:0.2 green:0.7 blue:0.9 alpha:1.0]],
-        @[@"bottle", [UIColor colorWithRed:0.9 green:0.2 blue:0.3 alpha:1.0]],
-        @[@"wine glass", [UIColor colorWithRed:0.6 green:0.6 blue:0.3 alpha:1.0]],
-        @[@"cup", [UIColor colorWithRed:0.3 green:0.4 blue:0.9 alpha:1.0]],
-        @[@"fork", [UIColor colorWithRed:0.4 green:0.7 blue:0.2 alpha:1.0]],
-        @[@"knife", [UIColor colorWithRed:0.8 green:0.2 blue:0.5 alpha:1.0]],
-        @[@"spoon", [UIColor colorWithRed:0.6 green:0.3 blue:0.7 alpha:1.0]],
-        @[@"bowl", [UIColor colorWithRed:0.2 green:0.8 blue:0.4 alpha:1.0]],
-        @[@"banana", [UIColor colorWithRed:0.7 green:0.7 blue:0.1 alpha:1.0]],
-        @[@"apple", [UIColor colorWithRed:0.9 green:0.1 blue:0.4 alpha:1.0]],
-        @[@"sandwich", [UIColor colorWithRed:0.4 green:0.5 blue:0.8 alpha:1.0]],
-        @[@"orange", [UIColor colorWithRed:0.8 green:0.6 blue:0.2 alpha:1.0]],
-        @[@"broccoli", [UIColor colorWithRed:0.3 green:0.8 blue:0.3 alpha:1.0]],
-        @[@"carrot", [UIColor colorWithRed:0.7 green:0.2 blue:0.6 alpha:1.0]],
-        @[@"hot dog", [UIColor colorWithRed:0.9 green:0.3 blue:0.5 alpha:1.0]],
-        @[@"pizza", [UIColor colorWithRed:0.5 green:0.3 blue:0.8 alpha:1.0]],
-        @[@"donut", [UIColor colorWithRed:0.8 green:0.1 blue:0.4 alpha:1.0]],
-        @[@"cake", [UIColor colorWithRed:0.7 green:0.5 blue:0.1 alpha:1.0]],
-        @[@"chair", [UIColor colorWithRed:0.6 green:0.2 blue:0.4 alpha:1.0]],
-        @[@"couch", [UIColor colorWithRed:0.4 green:0.6 blue:0.2 alpha:1.0]],
-        @[@"potted plant", [UIColor colorWithRed:0.8 green:0.4 blue:0.5 alpha:1.0]],
-        @[@"bed", [UIColor colorWithRed:0.3 green:0.7 blue:0.7 alpha:1.0]],
-        @[@"dining table", [UIColor colorWithRed:0.5 green:0.8 blue:0.3 alpha:1.0]],
-        @[@"toilet", [UIColor colorWithRed:0.7 green:0.4 blue:0.6 alpha:1.0]],
-        @[@"tv", [UIColor colorWithRed:0.9 green:0.5 blue:0.2 alpha:1.0]],
-        @[@"laptop", [UIColor colorWithRed:0.6 green:0.3 blue:0.7 alpha:1.0]],
-        @[@"mouse", [UIColor colorWithRed:0.2 green:0.9 blue:0.5 alpha:1.0]],
-        @[@"remote", [UIColor colorWithRed:0.8 green:0.4 blue:0.3 alpha:1.0]],
-        @[@"keyboard", [UIColor colorWithRed:0.3 green:0.6 blue:0.8 alpha:1.0]],
-        @[@"cell phone", [UIColor colorWithRed:0.7 green:0.3 blue:0.9 alpha:1.0]],
-        @[@"microwave", [UIColor colorWithRed:0.4 green:0.9 blue:0.4 alpha:1.0]],
-        @[@"oven", [UIColor colorWithRed:0.5 green:0.7 blue:0.2 alpha:1.0]],
-        @[@"toaster", [UIColor colorWithRed:0.9 green:0.2 blue:0.3 alpha:1.0]],
-        @[@"sink", [UIColor colorWithRed:0.6 green:0.8 blue:0.3 alpha:1.0]],
-        @[@"refrigerator", [UIColor colorWithRed:0.8 green:0.4 blue:0.7 alpha:1.0]],
-        @[@"book", [UIColor colorWithRed:0.3 green:0.5 blue:0.9 alpha:1.0]],
-        @[@"clock", [UIColor colorWithRed:0.7 green:0.7 blue:0.2 alpha:1.0]],
-        @[@"vase", [UIColor colorWithRed:0.9 green:0.4 blue:0.5 alpha:1.0]],
-        @[@"scissors", [UIColor colorWithRed:0.2 green:0.7 blue:0.8 alpha:1.0]],
-        @[@"teddy bear", [UIColor colorWithRed:0.6 green:0.3 blue:0.9 alpha:1.0]],
-        @[@"hair drier", [UIColor colorWithRed:0.8 green:0.2 blue:0.3 alpha:1.0]],
+        @[@"person", [UIColor redColor]],@[@"bicycle", [UIColor greenColor]],@[@"car", [UIColor blueColor]],
+        @[@"motorcycle", [UIColor cyanColor]],@[@"airplane", [UIColor magentaColor]],@[@"bus", [UIColor yellowColor]],
+        @[@"train", [UIColor orangeColor]],@[@"truck", [UIColor purpleColor]],@[@"boat", [UIColor brownColor]],
+        @[@"traffic light", [UIColor colorWithRed:0.5 green:0.7 blue:0.2 alpha:1.0]],@[@"fire hydrant", [UIColor colorWithRed:0.8 green:0.1 blue:0.1 alpha:1.0]],
+        @[@"stop sign", [UIColor colorWithRed:0.3 green:0.3 blue:0.8 alpha:1.0]],@[@"parking meter", [UIColor colorWithRed:0.7 green:0.5 blue:0.3 alpha:1.0]],
+        @[@"bench", [UIColor colorWithRed:0.4 green:0.4 blue:0.2 alpha:1.0]],@[@"bird", [UIColor colorWithRed:0.1 green:0.5 blue:0.9 alpha:1.0]],
+        @[@"cat", [UIColor colorWithRed:0.8 green:0.2 blue:0.6 alpha:1.0]],@[@"dog", [UIColor colorWithRed:0.9 green:0.3 blue:0.3 alpha:1.0]],
+        @[@"horse", [UIColor colorWithRed:0.2 green:0.6 blue:0.7 alpha:1.0]],@[@"sheep", [UIColor colorWithRed:0.7 green:0.3 blue:0.5 alpha:1.0]],
+        @[@"cow", [UIColor colorWithRed:0.4 green:0.8 blue:0.4 alpha:1.0]],@[@"elephant", [UIColor colorWithRed:0.3 green:0.4 blue:0.9 alpha:1.0]],
+        @[@"bear", [UIColor colorWithRed:0.6 green:0.2 blue:0.8 alpha:1.0]],@[@"zebra", [UIColor colorWithRed:0.8 green:0.5 blue:0.2 alpha:1.0]],
+        @[@"giraffe", [UIColor colorWithRed:0.5 green:0.9 blue:0.1 alpha:1.0]],@[@"backpack", [UIColor colorWithRed:0.3 green:0.7 blue:0.4 alpha:1.0]],
+        @[@"umbrella", [UIColor colorWithRed:0.4 green:0.6 blue:0.9 alpha:1.0]],@[@"handbag", [UIColor colorWithRed:0.9 green:0.2 blue:0.5 alpha:1.0]],
+        @[@"tie", [UIColor colorWithRed:0.5 green:0.3 blue:0.7 alpha:1.0]],@[@"suitcase", [UIColor colorWithRed:0.6 green:0.7 blue:0.2 alpha:1.0]],
+        @[@"frisbee", [UIColor colorWithRed:0.7 green:0.2 blue:0.4 alpha:1.0]],@[@"skis", [UIColor colorWithRed:0.3 green:0.9 blue:0.3 alpha:1.0]],
+        @[@"snowboard", [UIColor colorWithRed:0.8 green:0.1 blue:0.6 alpha:1.0]],@[@"sports ball", [UIColor colorWithRed:0.4 green:0.3 blue:0.8 alpha:1.0]],
+        @[@"kite", [UIColor colorWithRed:0.2 green:0.5 blue:0.7 alpha:1.0]],@[@"baseball bat", [UIColor colorWithRed:0.6 green:0.4 blue:0.2 alpha:1.0]],
+        @[@"baseball glove", [UIColor colorWithRed:0.7 green:0.1 blue:0.4 alpha:1.0]],@[@"skateboard", [UIColor colorWithRed:0.5 green:0.8 blue:0.5 alpha:1.0]],
+        @[@"surfboard", [UIColor colorWithRed:0.8 green:0.3 blue:0.6 alpha:1.0]],@[@"tennis racket", [UIColor colorWithRed:0.2 green:0.7 blue:0.9 alpha:1.0]],
+        @[@"bottle", [UIColor colorWithRed:0.9 green:0.2 blue:0.3 alpha:1.0]],@[@"wine glass", [UIColor colorWithRed:0.6 green:0.6 blue:0.3 alpha:1.0]],
+        @[@"cup", [UIColor colorWithRed:0.3 green:0.4 blue:0.9 alpha:1.0]],@[@"fork", [UIColor colorWithRed:0.4 green:0.7 blue:0.2 alpha:1.0]],
+        @[@"knife", [UIColor colorWithRed:0.8 green:0.2 blue:0.5 alpha:1.0]],@[@"spoon", [UIColor colorWithRed:0.6 green:0.3 blue:0.7 alpha:1.0]],
+        @[@"bowl", [UIColor colorWithRed:0.2 green:0.8 blue:0.4 alpha:1.0]],@[@"banana", [UIColor colorWithRed:0.7 green:0.7 blue:0.1 alpha:1.0]],
+        @[@"apple", [UIColor colorWithRed:0.9 green:0.1 blue:0.4 alpha:1.0]],@[@"sandwich", [UIColor colorWithRed:0.4 green:0.5 blue:0.8 alpha:1.0]],
+        @[@"orange", [UIColor colorWithRed:0.8 green:0.6 blue:0.2 alpha:1.0]],@[@"broccoli", [UIColor colorWithRed:0.3 green:0.8 blue:0.3 alpha:1.0]],
+        @[@"carrot", [UIColor colorWithRed:0.7 green:0.2 blue:0.6 alpha:1.0]],@[@"hot dog", [UIColor colorWithRed:0.9 green:0.3 blue:0.5 alpha:1.0]],
+        @[@"pizza", [UIColor colorWithRed:0.5 green:0.3 blue:0.8 alpha:1.0]],@[@"donut", [UIColor colorWithRed:0.8 green:0.1 blue:0.4 alpha:1.0]],
+        @[@"cake", [UIColor colorWithRed:0.7 green:0.5 blue:0.1 alpha:1.0]],@[@"chair", [UIColor colorWithRed:0.6 green:0.2 blue:0.4 alpha:1.0]],
+        @[@"couch", [UIColor colorWithRed:0.4 green:0.6 blue:0.2 alpha:1.0]],@[@"potted plant", [UIColor colorWithRed:0.8 green:0.4 blue:0.5 alpha:1.0]],
+        @[@"bed", [UIColor colorWithRed:0.3 green:0.7 blue:0.7 alpha:1.0]],@[@"dining table", [UIColor colorWithRed:0.5 green:0.8 blue:0.3 alpha:1.0]],
+        @[@"toilet", [UIColor colorWithRed:0.7 green:0.4 blue:0.6 alpha:1.0]],@[@"tv", [UIColor colorWithRed:0.9 green:0.5 blue:0.2 alpha:1.0]],
+        @[@"laptop", [UIColor colorWithRed:0.6 green:0.3 blue:0.7 alpha:1.0]],@[@"mouse", [UIColor colorWithRed:0.2 green:0.9 blue:0.5 alpha:1.0]],
+        @[@"remote", [UIColor colorWithRed:0.8 green:0.4 blue:0.3 alpha:1.0]],@[@"keyboard", [UIColor colorWithRed:0.3 green:0.6 blue:0.8 alpha:1.0]],
+        @[@"cell phone", [UIColor colorWithRed:0.7 green:0.3 blue:0.9 alpha:1.0]],@[@"microwave", [UIColor colorWithRed:0.4 green:0.9 blue:0.4 alpha:1.0]],
+        @[@"oven", [UIColor colorWithRed:0.5 green:0.7 blue:0.2 alpha:1.0]],@[@"toaster", [UIColor colorWithRed:0.9 green:0.2 blue:0.3 alpha:1.0]],
+        @[@"sink", [UIColor colorWithRed:0.6 green:0.8 blue:0.3 alpha:1.0]],@[@"refrigerator", [UIColor colorWithRed:0.8 green:0.4 blue:0.7 alpha:1.0]],
+        @[@"book", [UIColor colorWithRed:0.3 green:0.5 blue:0.9 alpha:1.0]],@[@"clock", [UIColor colorWithRed:0.7 green:0.7 blue:0.2 alpha:1.0]],
+        @[@"vase", [UIColor colorWithRed:0.9 green:0.4 blue:0.5 alpha:1.0]],@[@"scissors", [UIColor colorWithRed:0.2 green:0.7 blue:0.8 alpha:1.0]],
+        @[@"teddy bear", [UIColor colorWithRed:0.6 green:0.3 blue:0.9 alpha:1.0]],@[@"hair drier", [UIColor colorWithRed:0.8 green:0.2 blue:0.3 alpha:1.0]],
         @[@"toothbrush", [UIColor colorWithRed:0.4 green:0.7 blue:0.6 alpha:1.0]]
     ];
 
@@ -224,8 +183,6 @@ NSString *output_buffer;
 - (void)setupCamera {
     self.captureSession = [[AVCaptureSession alloc] init];
     self.captureSession.sessionPreset = AVCaptureSessionPresetPhoto;
-    
-    // Configure camera input
     AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
     NSError *error = nil;
     AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice:device error:&error];
@@ -241,19 +198,15 @@ NSString *output_buffer;
     output.alwaysDiscardsLateVideoFrames = YES;
     [output setSampleBufferDelegate:self queue:dispatch_get_main_queue()];
     [self.captureSession addOutput:output];
-    
-    // Configure preview layer
     self.previewLayer = [AVCaptureVideoPreviewLayer layerWithSession:self.captureSession];
-    self.previewLayer.videoGravity = AVLayerVideoGravityResizeAspect; // Maintain aspect ratio without cropping
+    self.previewLayer.videoGravity = AVLayerVideoGravityResizeAspect;
     [self.view.layer addSublayer:self.previewLayer];
-    
-    // Start the camera session
     [self.captureSession startRunning];
 }
 
 NSArray *processOutput(const float *output, int outputLength, float imgWidth, float imgHeight) {
     NSMutableArray *boxes = [NSMutableArray array];
-    int modelInputSize = 640; // Replace this with your actual model input size
+    int modelInputSize = 640;
     int numPredictions = pow(modelInputSize / 32, 2) * 21;
 
     for (int index = 0; index < numPredictions; index++) {
@@ -311,26 +264,14 @@ CGFloat iouBetweenBox(NSArray *box1, NSArray *box2) {
 }
 
 - (void)drawSquareWithTopLeftX:(CGFloat)xOrigin topLeftY:(CGFloat)yOrigin bottomRightX:(CGFloat)bottomRightX bottomRightY:(CGFloat)bottomRightY classIndex:(int)classIndex aspectRatio:(float)aspectRatio {
-    // Determine the smaller dimension of the screen
     CGFloat minDimension = MIN(self.view.bounds.size.width, self.view.bounds.size.height);
-    
     CGFloat height = 640 / aspectRatio;
-    // Calculate the coordinates for the centered square
     CGFloat leftEdgeX = (self.view.bounds.size.width - (minDimension * aspectRatio)) / 2;
-    
-    // Calculate scaled coordinates
     CGFloat scaledXOrigin = leftEdgeX + (xOrigin * aspectRatio / 640.0) * minDimension;
     CGFloat scaledYOrigin = (yOrigin / height) * minDimension;
     CGFloat scaledWidth = (bottomRightX - xOrigin) * (aspectRatio * minDimension / 640.0);
     CGFloat scaledHeight = (bottomRightY - yOrigin) * (minDimension / height);
-
-    // Log the coordinates
-    NSLog(@"Square Coordinates: Top Left (%.2f, %.2f), Width (%.2f), Height (%.2f)", scaledXOrigin, scaledYOrigin, scaledWidth, scaledHeight);
-    
-    // Get the class color
     UIColor *color = yolo_classes[classIndex][1];
-    
-    // Create a CAShapeLayer to draw the square
     CAShapeLayer *squareLayer = [CAShapeLayer layer];
     squareLayer.name = @"rectangleLayer";
     squareLayer.strokeColor = color.CGColor;
@@ -338,10 +279,8 @@ CGFloat iouBetweenBox(NSArray *box1, NSArray *box2) {
     squareLayer.fillColor = [UIColor clearColor].CGColor;
     squareLayer.path = [UIBezierPath bezierPathWithRect:CGRectMake(scaledXOrigin, scaledYOrigin, scaledWidth, scaledHeight)].CGPath;
     
-    // Add the square layer to the view's layer
     [self.view.layer addSublayer:squareLayer];
     
-    // Draw the label
     NSString *className = yolo_classes[classIndex][0];
     NSDictionary *textAttributes = @{NSFontAttributeName: [UIFont systemFontOfSize:12],
                                      NSForegroundColorAttributeName: [UIColor whiteColor]};
@@ -361,10 +300,9 @@ CGFloat iouBetweenBox(NSArray *box1, NSArray *box2) {
 }
 
 - (void)resetSquares {
-    // Remove any existing rectangle layers and labels
     NSMutableArray *layersToRemove = [NSMutableArray array];
     NSMutableArray *labelsToRemove = [NSMutableArray array];
-    
+
     for (CALayer *layer in self.view.layer.sublayers) {
         if ([layer.name isEqualToString:@"rectangleLayer"]) {
             [layersToRemove addObject:layer];
@@ -386,10 +324,6 @@ CGFloat iouBetweenBox(NSArray *box1, NSArray *box2) {
     }
 }
 
-
-
-
-
 CGFloat unionBetweenBox(NSArray *box1, NSArray *box2) {
     CGFloat box1Area = ([box1[2] floatValue] - [box1[0] floatValue]) * ([box1[3] floatValue] - [box1[1] floatValue]);
     CGFloat box2Area = ([box2[2] floatValue] - [box2[0] floatValue]) * ([box2[3] floatValue] - [box2[1] floatValue]);
@@ -403,7 +337,6 @@ CGFloat intersectionBetweenBox(NSArray *box1, NSArray *box2) {
     CGFloat y2 = MIN([box1[3] floatValue], [box2[3] floatValue]);
     return MAX(0, x2 - x1) * MAX(0, y2 - y1);
 }
-
 
 NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
     NSMutableDictionary<NSString *, id> *values = [@{@"op": [x componentsSeparatedByString:@"("][0]} mutableCopy];
@@ -429,7 +362,6 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
 }
 
 #pragma mark - Setup FPS Label
-
 - (void)setupFPSLabel {
     self.fpsLabel = [[UILabel alloc] initWithFrame:CGRectMake(10, 30, 150, 30)];
     self.fpsLabel.backgroundColor = [UIColor colorWithWhite:0 alpha:0.5];
@@ -440,30 +372,21 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
 }
 
 #pragma mark - Handle Rotation
-
 - (void)viewWillLayoutSubviews {
     [super viewWillLayoutSubviews];
-    
-    // Update the frame of the preview layer
     self.previewLayer.frame = [self frameForCurrentOrientation];
-    
-    // Update video orientation
     [self updateCameraOrientation];
 }
 
 - (CGRect)frameForCurrentOrientation {
     CGFloat width = self.view.bounds.size.width;
     CGFloat height = self.view.bounds.size.height;
-    
-    // Match the preview layer's frame to the screen size
     return CGRectMake(0, 0, width, height);
 }
 
 - (void)handleOrientationChange {
     UIDeviceOrientation deviceOrientation = [[UIDevice currentDevice] orientation];
     AVCaptureVideoOrientation newOrientation = [self videoOrientationForDeviceOrientation:deviceOrientation];
-    
-    // Only update orientation if it's different from the current orientation
     if (newOrientation != self.currentOrientation) {
         self.currentOrientation = newOrientation;
         [self updateCameraOrientation];
@@ -475,11 +398,11 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
         case UIDeviceOrientationPortrait:
             return AVCaptureVideoOrientationPortrait;
         case UIDeviceOrientationLandscapeLeft:
-            return AVCaptureVideoOrientationLandscapeRight; // Opposite for camera
+            return AVCaptureVideoOrientationLandscapeRight;
         case UIDeviceOrientationLandscapeRight:
-            return AVCaptureVideoOrientationLandscapeLeft; // Opposite for camera
+            return AVCaptureVideoOrientationLandscapeLeft;
         default:
-            return self.currentOrientation;  // Keep the current orientation if unknown
+            return self.currentOrientation;
     }
 }
 
@@ -516,11 +439,11 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
     size_t length = CFDataGetLength(rawData);
     size_t rgbLength = (length / 4) * 3;
     UInt8 *rgbData = (UInt8 *)malloc(rgbLength);
-    
+    //RGBA to RGB
     for (size_t i = 0, j = 0; i < length; i += 4, j += 3) {
-        rgbData[j] = rawBytes[i];         // Red
-        rgbData[j + 1] = rawBytes[i + 1]; // Green
-        rgbData[j + 2] = rawBytes[i + 2]; // Blue
+        rgbData[j] = rawBytes[i];
+        rgbData[j + 1] = rawBytes[i + 1];
+        rgbData[j + 2] = rawBytes[i + 2];
     }
     id<MTLBuffer> buffer = buffers[input_buffer];
     memset(buffer.contents, 0, buffer.length);
@@ -565,7 +488,6 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
     NSLog(@"Class Names: %@", classNamesString);
     free(floatArray);
     return output;
-    ///return uiImage;
 }
 
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
@@ -575,32 +497,26 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
     size_t height = CVPixelBufferGetHeight(imageBuffer);
     
     CGFloat aspect_ratio = (CGFloat)width / (CGFloat)height;
-    // Calculate the scale and target size
     CGFloat targetWidth = 640.0;
     CGFloat aspectRatio = (CGFloat)width / (CGFloat)height;
     CGSize targetSize = CGSizeMake(targetWidth, targetWidth / aspectRatio);
 
-    // Scale the CIImage to the target size while maintaining the aspect ratio
     CGFloat scaleX = targetSize.width / width;
     CGFloat scaleY = targetSize.height / height;
     CIImage *resizedImage = [ciImage imageByApplyingTransform:CGAffineTransformMakeScale(scaleX, scaleY)];
 
-    // Crop the resized image to the target size
     CGRect cropRect = CGRectMake(0, 0, targetSize.width, targetSize.height);
     CIImage *croppedImage = [resizedImage imageByCroppingToRect:cropRect];
 
-    // Create the final UIImage
     CIContext *context = [CIContext context];
     CGImageRef cgImage = [context createCGImage:croppedImage fromRect:cropRect];
     self.latestFrame = [UIImage imageWithCGImage:cgImage];
-    
-    // Perform Metal operations on the main thread
+
     dispatch_async(dispatch_get_main_queue(), ^{
         NSArray *output = [self yolo:cgImage];
         CGImageRelease(cgImage);
 
-        // Draw squares based on output
-        [self resetSquares]; // Reset previous squares before drawing new ones
+        [self resetSquares];
         for (int i = 0; i < output.count; i++) {
             [self drawSquareWithTopLeftX:[output[i][0] floatValue]
                                 topLeftY:[output[i][1] floatValue]
@@ -610,7 +526,6 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
                              aspectRatio:aspect_ratio];
         }
     });
-    
     [self updateFPS];
 }
 
@@ -620,7 +535,7 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
     if (self.lastFrameTime > 0) {
         CFTimeInterval deltaTime = currentTime - self.lastFrameTime;
         self.frameCount++;
-        if (deltaTime >= 1.0) { // Update FPS every second
+        if (deltaTime >= 1.0) {
             CGFloat fps = self.frameCount / deltaTime;
             self.fpsLabel.text = [NSString stringWithFormat:@"FPS: %.1f", fps];
             self.frameCount = 0;
