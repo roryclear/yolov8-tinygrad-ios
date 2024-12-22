@@ -316,11 +316,10 @@ CGFloat iouBetweenBox(NSArray *box1, NSArray *box2) {
     
     // Calculate the coordinates for the centered square
     CGFloat leftEdgeX = (self.view.bounds.size.width - minDimension) / 2;
-    CGFloat topEdgeY = (self.view.bounds.size.height - minDimension) / 2;
     
     // Calculate scaled coordinates
     CGFloat scaledXOrigin = leftEdgeX + (xOrigin / 640.0) * minDimension;
-    CGFloat scaledYOrigin = topEdgeY + (yOrigin / 640.0) * minDimension;
+    CGFloat scaledYOrigin = (yOrigin / 640.0) * minDimension;
     CGFloat scaledWidth = (bottomRightX - xOrigin) * (minDimension / 640.0);
     CGFloat scaledHeight = (bottomRightY - yOrigin) * (minDimension / 640.0);
 
