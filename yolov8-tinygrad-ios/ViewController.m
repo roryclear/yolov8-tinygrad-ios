@@ -214,7 +214,7 @@ NSArray *processOutput(const float *output, int outputLength, float imgWidth, fl
         int classId = 0;
         float prob = 0.0;
 
-        for (int col = 0; col < 80; col++) {
+        for (int col = 0; col < yolo_classes.count; col++) {
             float confidence = output[numPredictions * (col + 4) + index];
             if (confidence > prob) {
                 prob = confidence;
