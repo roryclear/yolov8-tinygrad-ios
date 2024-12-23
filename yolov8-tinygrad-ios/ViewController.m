@@ -28,6 +28,7 @@ NSMutableDictionary *classColorMap;
 NSArray *yolo_classes;
 NSString *input_buffer;
 NSString *output_buffer;
+int yolo_res;
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -43,6 +44,7 @@ NSString *output_buffer;
     device = MTLCreateSystemDefaultDevice();
     mtl_queue = [device newCommandQueueWithMaxCommandBufferCount:1024];
     mtl_buffers_in_flight = [[NSMutableArray alloc] init];
+    yolo_res = 640;
     
     yolo_classes = @[
         @[@"person", [UIColor redColor]],@[@"bicycle", [UIColor greenColor]],@[@"car", [UIColor blueColor]],
@@ -87,9 +89,9 @@ NSString *output_buffer;
     ];
 
     NSString *documentsPath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
-    NSString *filePath = [documentsPath stringByAppendingPathComponent:@"batch_req_640x640"];
+    NSString *filePath = [documentsPath stringByAppendingPathComponent:[NSString stringWithFormat:@"batch_req_%dx%d", yolo_res, yolo_res]];
     if (![[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
-        NSData *data = [NSData dataWithContentsOfURL:[NSURL URLWithString:@"https://raw.githubusercontent.com/roryclear/yolov8-tinygrad-ios/main/batch_req_640x640"]];
+        NSData *data = [NSData dataWithContentsOfURL:[NSURL URLWithString:[NSString stringWithFormat:@"https://raw.githubusercontent.com/roryclear/yolov8-tinygrad-ios/main/batch_req_%dx%d",yolo_res,yolo_res]]];
         [data writeToFile:filePath atomically:YES];
     }
     NSData *ns_data = [NSData dataWithContentsOfFile:filePath];
@@ -205,7 +207,7 @@ NSString *output_buffer;
 
 NSArray *processOutput(const float *output, int outputLength, float imgWidth, float imgHeight) {
     NSMutableArray *boxes = [NSMutableArray array];
-    int modelInputSize = 640;
+    int modelInputSize = yolo_res;
     int numPredictions = pow(modelInputSize / 32, 2) * 21;
 
     for (int index = 0; index < numPredictions; index++) {
@@ -264,11 +266,11 @@ CGFloat iouBetweenBox(NSArray *box1, NSArray *box2) {
 
 - (void)drawSquareWithTopLeftX:(CGFloat)xOrigin topLeftY:(CGFloat)yOrigin bottomRightX:(CGFloat)bottomRightX bottomRightY:(CGFloat)bottomRightY classIndex:(int)classIndex aspectRatio:(float)aspectRatio {
     CGFloat minDimension = MIN(self.view.bounds.size.width, self.view.bounds.size.height);
-    CGFloat height = 640 / aspectRatio;
+    CGFloat height = yolo_res / aspectRatio;
     CGFloat leftEdgeX = (self.view.bounds.size.width - (minDimension * aspectRatio)) / 2;
-    CGFloat scaledXOrigin = leftEdgeX + (xOrigin * aspectRatio / 640.0) * minDimension;
+    CGFloat scaledXOrigin = leftEdgeX + (xOrigin * aspectRatio / yolo_res) * minDimension;
     CGFloat scaledYOrigin = (yOrigin / height) * minDimension;
-    CGFloat scaledWidth = (bottomRightX - xOrigin) * (aspectRatio * minDimension / 640.0);
+    CGFloat scaledWidth = (bottomRightX - xOrigin) * (aspectRatio * minDimension / yolo_res);
     CGFloat scaledHeight = (bottomRightY - yOrigin) * (minDimension / height);
     UIColor *color = yolo_classes[classIndex][1];
     CAShapeLayer *squareLayer = [CAShapeLayer layer];
@@ -477,7 +479,7 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
     const void *bufferPointer = buffer.contents;
     float *floatArray = malloc(buffer.length);
     memcpy(floatArray, bufferPointer, buffer.length);
-    NSArray *output = processOutput(floatArray,buffer.length / 4,640,640);
+    NSArray *output = processOutput(floatArray,buffer.length / 4,yolo_res,yolo_res);
     NSMutableString *classNamesString = [NSMutableString string];
     for (int i = 0; i < output.count; i++) {
         //uiImage = drawSquareOnImage(uiImage, [output[i][0] floatValue], [output[i][1] floatValue], [output[i][2] floatValue], [output[i][3] floatValue], [output[i][4] intValue]);
@@ -496,7 +498,7 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
     size_t height = CVPixelBufferGetHeight(imageBuffer);
     
     CGFloat aspect_ratio = (CGFloat)width / (CGFloat)height;
-    CGFloat targetWidth = 640.0;
+    CGFloat targetWidth = yolo_res;
     CGFloat aspectRatio = (CGFloat)width / (CGFloat)height;
     CGSize targetSize = CGSizeMake(targetWidth, targetWidth / aspectRatio);
 
@@ -546,3 +548,4 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
 }
 
 @end
+
