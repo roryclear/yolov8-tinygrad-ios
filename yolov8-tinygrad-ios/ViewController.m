@@ -254,10 +254,6 @@ NSArray *processOutput(const float *output, int outputLength, float imgWidth, fl
     return [result copy];
 }
 
-CGFloat iouBetweenBox(NSArray *box1, NSArray *box2) {
-    return intersectionBetweenBox(box1, box2) / unionBetweenBox(box1, box2);
-}
-
 - (void)drawSquareWithTopLeftX:(CGFloat)xOrigin topLeftY:(CGFloat)yOrigin bottomRightX:(CGFloat)bottomRightX bottomRightY:(CGFloat)bottomRightY classIndex:(int)classIndex aspectRatio:(float)aspectRatio {
     CGFloat minDimension = MIN(self.view.bounds.size.width, self.view.bounds.size.height);
     CGFloat height = yolo_res / aspectRatio;
@@ -317,12 +313,6 @@ CGFloat iouBetweenBox(NSArray *box1, NSArray *box2) {
     for (UIView *label in labelsToRemove) {
         [label removeFromSuperview];
     }
-}
-
-CGFloat unionBetweenBox(NSArray *box1, NSArray *box2) {
-    CGFloat box1Area = ([box1[2] floatValue] - [box1[0] floatValue]) * ([box1[3] floatValue] - [box1[1] floatValue]);
-    CGFloat box2Area = ([box2[2] floatValue] - [box2[0] floatValue]) * ([box2[3] floatValue] - [box2[1] floatValue]);
-    return box1Area + box2Area - intersectionBetweenBox(box1, box2);
 }
 
 #pragma mark - Setup FPS Label
