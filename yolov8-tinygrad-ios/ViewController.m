@@ -10,7 +10,6 @@
 @property (nonatomic, strong) UILabel *fpsLabel;  // Label to display the FPS
 @property (nonatomic, assign) CFTimeInterval lastFrameTime;  // Time when the last frame was captured
 @property (nonatomic, assign) NSUInteger frameCount;  // Number of frames captured
-@property (nonatomic, assign) AVCaptureVideoOrientation currentOrientation;  // Keep track of the current orientation
 
 @end
 
@@ -35,7 +34,7 @@ int yolo_res;
     [self setupYOLO];
     [self setupCamera];
     [self setupFPSLabel];
-    [self setupNotification];
+    self.previewLayer.connection.videoOrientation = AVCaptureVideoOrientationLandscapeRight;
 }
 
 - (void)setupYOLO {
@@ -171,12 +170,6 @@ int yolo_res;
     if (self.latestFrame) {
         CGImageRelease(self.latestFrame.CGImage);
     }
-}
-
-#pragma mark - Setup Notification
-
-- (void)setupNotification {
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleOrientationChange) name:UIDeviceOrientationDidChangeNotification object:nil];
 }
 
 #pragma mark - Camera Setup
@@ -376,42 +369,12 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
 - (void)viewWillLayoutSubviews {
     [super viewWillLayoutSubviews];
     self.previewLayer.frame = [self frameForCurrentOrientation];
-    [self updateCameraOrientation];
 }
 
 - (CGRect)frameForCurrentOrientation {
     CGFloat width = self.view.bounds.size.width;
     CGFloat height = self.view.bounds.size.height;
     return CGRectMake(0, 0, width, height);
-}
-
-- (void)handleOrientationChange {
-    UIDeviceOrientation deviceOrientation = [[UIDevice currentDevice] orientation];
-    AVCaptureVideoOrientation newOrientation = [self videoOrientationForDeviceOrientation:deviceOrientation];
-    if (newOrientation != self.currentOrientation) {
-        self.currentOrientation = newOrientation;
-        [self updateCameraOrientation];
-    }
-}
-
-- (AVCaptureVideoOrientation)videoOrientationForDeviceOrientation:(UIDeviceOrientation)deviceOrientation {
-    switch (deviceOrientation) {
-        case UIDeviceOrientationPortrait:
-            return AVCaptureVideoOrientationPortrait;
-        case UIDeviceOrientationLandscapeLeft:
-            return AVCaptureVideoOrientationLandscapeRight;
-        case UIDeviceOrientationLandscapeRight:
-            return AVCaptureVideoOrientationLandscapeLeft;
-        default:
-            return self.currentOrientation;
-    }
-}
-
-- (void)updateCameraOrientation {
-    AVCaptureConnection *connection = self.previewLayer.connection;
-    if ([connection isVideoOrientationSupported]) {
-        connection.videoOrientation = self.currentOrientation;
-    }
 }
 
 - (CGImageRef)cropAndResizeCGImage:(CGImageRef)image toSize:(CGSize)size {
@@ -434,7 +397,6 @@ NSMutableDictionary<NSString *, id> *extractValues(NSString *x) {
 }
 
 - (NSArray *)yolo:(CGImageRef)cgImage {
-    UIImage *uiImage = [UIImage imageWithCGImage:cgImage];
     CFDataRef rawData = CGDataProviderCopyData(CGImageGetDataProvider(cgImage));
     const UInt8 *rawBytes = CFDataGetBytePtr(rawData);
     size_t length = CFDataGetLength(rawData);
