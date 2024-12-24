@@ -19,8 +19,6 @@
 @implementation ViewController
 
 NSMutableDictionary *classColorMap;
-NSString *input_buffer;
-NSString *output_buffer;
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -72,7 +70,7 @@ NSString *output_buffer;
             id<MTLBuffer> buffer = self.yolo.buffers[values[@"buffer_num"][0]];
             NSData *data = self.yolo._h[values[@"datahash"][0]];
             memcpy(buffer.contents, data.bytes, data.length);
-            input_buffer = values[@"buffer_num"][0];
+            self.yolo.input_buffer = values[@"buffer_num"][0];
         } else if ([values[@"op"] isEqualToString:@"ProgramAlloc"]) {
             if ([self.yolo.pipeline_states objectForKey:@[values[@"name"][0],values[@"datahash"][0]]]) continue;
             NSString *prg = [[NSString alloc] initWithData:self.yolo._h[values[@"datahash"][0]] encoding:NSUTF8StringEncoding];
@@ -92,7 +90,7 @@ NSString *output_buffer;
         } else if ([values[@"op"] isEqualToString:@"ProgramExec"]) {
             [_q_exec addObject:values];
         } else if ([values[@"op"] isEqualToString:@"CopyOut"]) {
-            output_buffer = values[@"buffer_num"][0];
+            self.yolo.output_buffer = values[@"buffer_num"][0];
         }
     }
     self.yolo._q = [_q_exec mutableCopy];
@@ -301,7 +299,7 @@ NSString *output_buffer;
         rgbData[j + 1] = rawBytes[i + 1];
         rgbData[j + 2] = rawBytes[i + 2];
     }
-    id<MTLBuffer> buffer = self.yolo.buffers[input_buffer];
+    id<MTLBuffer> buffer = self.yolo.buffers[self.yolo.input_buffer];
     memset(buffer.contents, 0, buffer.length);
     memcpy(buffer.contents, rgbData, rgbLength);
     free(rgbData);
@@ -330,7 +328,7 @@ NSString *output_buffer;
         [self.yolo.mtl_buffers_in_flight[i] waitUntilCompleted];
     }
     [self.yolo.mtl_buffers_in_flight removeAllObjects];
-    buffer = self.yolo.buffers[output_buffer];
+    buffer = self.yolo.buffers[self.yolo.output_buffer];
     const void *bufferPointer = buffer.contents;
     float *floatArray = malloc(buffer.length);
     memcpy(floatArray, bufferPointer, buffer.length);

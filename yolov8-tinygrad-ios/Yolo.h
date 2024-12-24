@@ -15,6 +15,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) CFDataRef data;
 @property (nonatomic, strong) NSMutableDictionary *_h;
 @property (nonatomic, strong) NSMutableArray *_q;
+@property (nonatomic, strong) NSString *input_buffer;
+@property (nonatomic, strong) NSString *output_buffer;
 
 // Initializer
 - (instancetype)init;

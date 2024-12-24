@@ -14,6 +14,8 @@ NSArray *yolo_classes;
 CFDataRef data;
 NSMutableDictionary *_h;
 NSMutableArray *_q;
+NSString *input_buffer;
+NSString *output_buffer;
 
 - (instancetype)init {
     self = [super init];
