@@ -145,6 +145,61 @@ NSString *output_buffer;
     return self;
 }
 
+- (NSArray *)processOutput:(const float *)output outputLength:(int)outputLength imgWidth:(float)imgWidth imgHeight:(float)imgHeight {
+    NSMutableArray *boxes = [NSMutableArray array];
+    int modelInputSize = self.yolo_res;
+    int numPredictions = pow(modelInputSize / 32, 2) * 21;
+
+    for (int index = 0; index < numPredictions; index++) {
+        int classId = 0;
+        float prob = 0.0;
+
+        for (int col = 0; col < self.yolo_classes.count; col++) {
+            float confidence = output[numPredictions * (col + 4) + index];
+            if (confidence > prob) {
+                prob = confidence;
+                classId = col;
+            }
+        }
+
+        if (prob < 0.25) continue;
+
+        float xc = output[index];
+        float yc = output[numPredictions + index];
+        float w = output[2 * numPredictions + index];
+        float h = output[3 * numPredictions + index];
+
+        float x1 = (xc - w / 2) / modelInputSize * imgWidth;
+        float y1 = (yc - h / 2) / modelInputSize * imgHeight;
+        float x2 = (xc + w / 2) / modelInputSize * imgWidth;
+        float y2 = (yc + h / 2) / modelInputSize * imgHeight;
+
+        [boxes addObject:@[@(x1), @(y1), @(x2), @(y2), @(classId), @(prob)]];
+    }
+
+    [boxes sortUsingComparator:^NSComparisonResult(NSArray *box1, NSArray *box2) {
+        NSNumber *prob1 = box1[5];
+        NSNumber *prob2 = box2[5];
+        return [prob2 compare:prob1];
+    }];
+
+    NSMutableArray *result = [NSMutableArray array];
+    while ([boxes count] > 0) {
+        NSArray *bestBox = boxes[0];
+        [result addObject:bestBox];
+        [boxes removeObjectAtIndex:0];
+
+        NSMutableArray *filteredBoxes = [NSMutableArray array];
+        for (NSArray *box in boxes) {
+            if ([self iouBetweenBox:bestBox andBox:box] < 0.7) {
+                [filteredBoxes addObject:box];
+            }
+        }
+        boxes = filteredBoxes;
+    }
+    return [result copy];
+}
+
 // Calculate intersection between two boxes
 - (CGFloat)intersectionBetweenBox:(NSArray *)box1 andBox:(NSArray *)box2 {
     CGFloat x1 = MAX([box1[0] floatValue], [box2[0] floatValue]);

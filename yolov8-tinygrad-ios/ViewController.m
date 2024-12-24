@@ -12,7 +12,6 @@
 @property (nonatomic, assign) CFTimeInterval lastFrameTime;  // Time when the last frame was captured
 @property (nonatomic, assign) NSUInteger frameCount;  // Number of frames captured
 @property (nonatomic, strong) Yolo *yolo;
-- (NSArray *)processOutput:(const float *)output outputLength:(int)outputLength imgWidth:(float)imgWidth imgHeight:(float)imgHeight;
 
 @end
 
@@ -63,61 +62,6 @@ NSMutableDictionary *classColorMap;
     self.previewLayer.videoGravity = AVLayerVideoGravityResizeAspect;
     [self.view.layer addSublayer:self.previewLayer];
     [self.captureSession startRunning];
-}
-
-- (NSArray *)processOutput:(const float *)output outputLength:(int)outputLength imgWidth:(float)imgWidth imgHeight:(float)imgHeight {
-    NSMutableArray *boxes = [NSMutableArray array];
-    int modelInputSize = self.yolo.yolo_res;
-    int numPredictions = pow(modelInputSize / 32, 2) * 21;
-
-    for (int index = 0; index < numPredictions; index++) {
-        int classId = 0;
-        float prob = 0.0;
-
-        for (int col = 0; col < self.yolo.yolo_classes.count; col++) {
-            float confidence = output[numPredictions * (col + 4) + index];
-            if (confidence > prob) {
-                prob = confidence;
-                classId = col;
-            }
-        }
-
-        if (prob < 0.25) continue;
-
-        float xc = output[index];
-        float yc = output[numPredictions + index];
-        float w = output[2 * numPredictions + index];
-        float h = output[3 * numPredictions + index];
-
-        float x1 = (xc - w / 2) / modelInputSize * imgWidth;
-        float y1 = (yc - h / 2) / modelInputSize * imgHeight;
-        float x2 = (xc + w / 2) / modelInputSize * imgWidth;
-        float y2 = (yc + h / 2) / modelInputSize * imgHeight;
-
-        [boxes addObject:@[@(x1), @(y1), @(x2), @(y2), @(classId), @(prob)]];
-    }
-
-    [boxes sortUsingComparator:^NSComparisonResult(NSArray *box1, NSArray *box2) {
-        NSNumber *prob1 = box1[5];
-        NSNumber *prob2 = box2[5];
-        return [prob2 compare:prob1];
-    }];
-
-    NSMutableArray *result = [NSMutableArray array];
-    while ([boxes count] > 0) {
-        NSArray *bestBox = boxes[0];
-        [result addObject:bestBox];
-        [boxes removeObjectAtIndex:0];
-
-        NSMutableArray *filteredBoxes = [NSMutableArray array];
-        for (NSArray *box in boxes) {
-            if ([self.yolo iouBetweenBox:bestBox andBox:box] < 0.7) {
-                [filteredBoxes addObject:box];
-            }
-        }
-        boxes = filteredBoxes;
-    }
-    return [result copy];
 }
 
 - (void)drawSquareWithTopLeftX:(CGFloat)xOrigin topLeftY:(CGFloat)yOrigin bottomRightX:(CGFloat)bottomRightX bottomRightY:(CGFloat)bottomRightY classIndex:(int)classIndex aspectRatio:(float)aspectRatio {
@@ -267,7 +211,7 @@ NSMutableDictionary *classColorMap;
     const void *bufferPointer = buffer.contents;
     float *floatArray = malloc(buffer.length);
     memcpy(floatArray, bufferPointer, buffer.length);
-    NSArray *output = [self processOutput:floatArray outputLength:buffer.length / 4 imgWidth:self.yolo.yolo_res imgHeight:self.yolo.yolo_res];
+    NSArray *output = [self.yolo processOutput:floatArray outputLength:buffer.length / 4 imgWidth:self.yolo.yolo_res imgHeight:self.yolo.yolo_res];
     NSMutableString *classNamesString = [NSMutableString string];
     for (int i = 0; i < output.count; i++) {
         //uiImage = drawSquareOnImage(uiImage, [output[i][0] floatValue], [output[i][1] floatValue], [output[i][2] floatValue], [output[i][3] floatValue], [output[i][4] intValue]);
