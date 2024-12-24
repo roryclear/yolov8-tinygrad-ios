@@ -245,5 +245,62 @@ NSString *output_buffer;
     return values;
 }
 
+- (NSArray *)yolo:(CGImageRef)cgImage {
+    CFDataRef rawData = CGDataProviderCopyData(CGImageGetDataProvider(cgImage));
+    const UInt8 *rawBytes = CFDataGetBytePtr(rawData);
+    size_t length = CFDataGetLength(rawData);
+    size_t rgbLength = (length / 4) * 3;
+    UInt8 *rgbData = (UInt8 *)malloc(rgbLength);
+    //RGBA to RGB
+    for (size_t i = 0, j = 0; i < length; i += 4, j += 3) {
+        rgbData[j] = rawBytes[i];
+        rgbData[j + 1] = rawBytes[i + 1];
+        rgbData[j + 2] = rawBytes[i + 2];
+    }
+    id<MTLBuffer> buffer = self.buffers[self.input_buffer];
+    memset(buffer.contents, 0, buffer.length);
+    memcpy(buffer.contents, rgbData, rgbLength);
+    free(rgbData);
+    CFRelease(rawData);
+    
+    for (NSMutableDictionary *values in self._q) {
+        id<MTLCommandBuffer> command_buffer = [self.mtl_queue commandBuffer];
+        id<MTLComputeCommandEncoder> encoder = [command_buffer computeCommandEncoder];
+        [encoder setComputePipelineState:self.pipeline_states[@[values[@"name"][0],values[@"datahash"][0]]]];
+        for(int i = 0; i < [(NSArray *)values[@"bufs"] count]; i++){
+            [encoder setBuffer:self.buffers[values[@"bufs"][i]] offset:0 atIndex:i];
+        }
+        for (int i = 0; i < [(NSArray *)values[@"vals"] count]; i++) {
+            NSInteger value = [values[@"vals"][i] integerValue];
+            [encoder setBytes:&value length:sizeof(NSInteger) atIndex:i + [(NSArray *)values[@"bufs"] count]];
+        }
+        MTLSize global_size = MTLSizeMake([values[@"global_sizes"][0] intValue], [values[@"global_sizes"][1] intValue], [values[@"global_sizes"][2] intValue]);
+        MTLSize local_size = MTLSizeMake([values[@"local_sizes"][0] intValue], [values[@"local_sizes"][1] intValue], [values[@"local_sizes"][2] intValue]);
+        [encoder dispatchThreadgroups:global_size threadsPerThreadgroup:local_size];
+        [encoder endEncoding];
+        [command_buffer commit];
+        [self.mtl_buffers_in_flight addObject: command_buffer];
+    }
+
+    for(int i = 0; i < self.mtl_buffers_in_flight.count; i++){
+        [self.mtl_buffers_in_flight[i] waitUntilCompleted];
+    }
+    [self.mtl_buffers_in_flight removeAllObjects];
+    buffer = self.buffers[self.output_buffer];
+    const void *bufferPointer = buffer.contents;
+    float *floatArray = malloc(buffer.length);
+    memcpy(floatArray, bufferPointer, buffer.length);
+    NSArray *output = [self processOutput:floatArray outputLength:buffer.length / 4 imgWidth:self.yolo_res imgHeight:self.yolo_res];
+    NSMutableString *classNamesString = [NSMutableString string];
+    for (int i = 0; i < output.count; i++) {
+        //uiImage = drawSquareOnImage(uiImage, [output[i][0] floatValue], [output[i][1] floatValue], [output[i][2] floatValue], [output[i][3] floatValue], [output[i][4] intValue]);
+        [classNamesString appendString:self.yolo_classes[[output[i][4] intValue]][0]];
+        if (i < output.count - 1) [classNamesString appendString:@", "];
+    }
+    NSLog(@"Class Names: %@", classNamesString);
+    free(floatArray);
+    return output;
+}
+
 @end
 

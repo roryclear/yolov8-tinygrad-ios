@@ -166,63 +166,6 @@ NSMutableDictionary *classColorMap;
     return resizedImage.CGImage;
 }
 
-- (NSArray *)yolo:(CGImageRef)cgImage {
-    CFDataRef rawData = CGDataProviderCopyData(CGImageGetDataProvider(cgImage));
-    const UInt8 *rawBytes = CFDataGetBytePtr(rawData);
-    size_t length = CFDataGetLength(rawData);
-    size_t rgbLength = (length / 4) * 3;
-    UInt8 *rgbData = (UInt8 *)malloc(rgbLength);
-    //RGBA to RGB
-    for (size_t i = 0, j = 0; i < length; i += 4, j += 3) {
-        rgbData[j] = rawBytes[i];
-        rgbData[j + 1] = rawBytes[i + 1];
-        rgbData[j + 2] = rawBytes[i + 2];
-    }
-    id<MTLBuffer> buffer = self.yolo.buffers[self.yolo.input_buffer];
-    memset(buffer.contents, 0, buffer.length);
-    memcpy(buffer.contents, rgbData, rgbLength);
-    free(rgbData);
-    CFRelease(rawData);
-    
-    for (NSMutableDictionary *values in self.yolo._q) {
-        id<MTLCommandBuffer> command_buffer = [self.yolo.mtl_queue commandBuffer];
-        id<MTLComputeCommandEncoder> encoder = [command_buffer computeCommandEncoder];
-        [encoder setComputePipelineState:self.yolo.pipeline_states[@[values[@"name"][0],values[@"datahash"][0]]]];
-        for(int i = 0; i < [(NSArray *)values[@"bufs"] count]; i++){
-            [encoder setBuffer:self.yolo.buffers[values[@"bufs"][i]] offset:0 atIndex:i];
-        }
-        for (int i = 0; i < [(NSArray *)values[@"vals"] count]; i++) {
-            NSInteger value = [values[@"vals"][i] integerValue];
-            [encoder setBytes:&value length:sizeof(NSInteger) atIndex:i + [(NSArray *)values[@"bufs"] count]];
-        }
-        MTLSize global_size = MTLSizeMake([values[@"global_sizes"][0] intValue], [values[@"global_sizes"][1] intValue], [values[@"global_sizes"][2] intValue]);
-        MTLSize local_size = MTLSizeMake([values[@"local_sizes"][0] intValue], [values[@"local_sizes"][1] intValue], [values[@"local_sizes"][2] intValue]);
-        [encoder dispatchThreadgroups:global_size threadsPerThreadgroup:local_size];
-        [encoder endEncoding];
-        [command_buffer commit];
-        [self.yolo.mtl_buffers_in_flight addObject: command_buffer];
-    }
-
-    for(int i = 0; i < self.yolo.mtl_buffers_in_flight.count; i++){
-        [self.yolo.mtl_buffers_in_flight[i] waitUntilCompleted];
-    }
-    [self.yolo.mtl_buffers_in_flight removeAllObjects];
-    buffer = self.yolo.buffers[self.yolo.output_buffer];
-    const void *bufferPointer = buffer.contents;
-    float *floatArray = malloc(buffer.length);
-    memcpy(floatArray, bufferPointer, buffer.length);
-    NSArray *output = [self.yolo processOutput:floatArray outputLength:buffer.length / 4 imgWidth:self.yolo.yolo_res imgHeight:self.yolo.yolo_res];
-    NSMutableString *classNamesString = [NSMutableString string];
-    for (int i = 0; i < output.count; i++) {
-        //uiImage = drawSquareOnImage(uiImage, [output[i][0] floatValue], [output[i][1] floatValue], [output[i][2] floatValue], [output[i][3] floatValue], [output[i][4] intValue]);
-        [classNamesString appendString:self.yolo.yolo_classes[[output[i][4] intValue]][0]];
-        if (i < output.count - 1) [classNamesString appendString:@", "];
-    }
-    NSLog(@"Class Names: %@", classNamesString);
-    free(floatArray);
-    return output;
-}
-
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
     CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
     CIImage *ciImage = [CIImage imageWithCVPixelBuffer:imageBuffer];
@@ -246,7 +189,7 @@ NSMutableDictionary *classColorMap;
     self.latestFrame = [UIImage imageWithCGImage:cgImage];
 
     dispatch_async(dispatch_get_main_queue(), ^{
-        NSArray *output = [self yolo:cgImage];
+        NSArray *output = [self.yolo yolo:cgImage];
         CGImageRelease(cgImage);
 
         [self resetSquares];
@@ -280,3 +223,4 @@ NSMutableDictionary *classColorMap;
 }
 
 @end
+
