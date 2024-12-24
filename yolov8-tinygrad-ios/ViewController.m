@@ -18,8 +18,6 @@
 
 @implementation ViewController
 
-NSMutableArray *_q;
-NSMutableDictionary *_h;
 NSMutableDictionary *classColorMap;
 NSString *input_buffer;
 NSString *output_buffer;
@@ -36,9 +34,8 @@ NSString *output_buffer;
 - (void)setupYOLO {    
     const UInt8 *bytes = CFDataGetBytePtr(self.yolo.data);
     NSInteger length = CFDataGetLength(self.yolo.data);
-
     NSData *range_data;
-    _h = [[NSMutableDictionary alloc] init];
+    self.yolo._h = [[NSMutableDictionary alloc] init];
     NSInteger ptr = 0;
     NSString *string_data;
     NSMutableString *datahash = [NSMutableString stringWithCapacity:0x40];
@@ -53,32 +50,32 @@ NSString *output_buffer;
             [datahash appendFormat:@"%02x", datahash_bytes[i]];
         }
         range_data = [NSData dataWithBytes:bytes + (ptr + 0x28) length:datalen];
-        _h[datahash] = range_data;
+        self.yolo._h[datahash] = range_data;
         ptr += 0x28 + datalen;
     }
     CFRelease(self.yolo.data);
     string_data = [[NSString alloc] initWithData:range_data encoding:NSUTF8StringEncoding];
-    _q = [NSMutableArray array];
+    self.yolo._q = [NSMutableArray array];
     NSMutableArray *_q_exec = [NSMutableArray array];
     NSArray *ops = @[@"BufferAlloc", @"CopyIn", @"ProgramAlloc",@"ProgramExec",@"CopyOut"];
     NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:[NSString stringWithFormat:@"(%@)\\(", [ops componentsJoinedByString:@"|"]] options:0 error:nil];
     __block NSInteger lastIndex = 0;
     [regex enumerateMatchesInString:string_data options:0 range:NSMakeRange(0, string_data.length) usingBlock:^(NSTextCheckingResult *match, NSMatchingFlags flags, BOOL *stop) {
-        [_q addObject:[self.yolo extractValues:([[string_data substringWithRange:NSMakeRange(lastIndex, match.range.location - lastIndex)] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@", "]])]];
+        [self.yolo._q addObject:[self.yolo extractValues:([[string_data substringWithRange:NSMakeRange(lastIndex, match.range.location - lastIndex)] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@", "]])]];
         lastIndex = match.range.location;
     }];
-    [_q addObject:[self.yolo extractValues:([[string_data substringFromIndex:lastIndex] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@", "]])]];
-    for (NSMutableDictionary *values in _q) {
+    [self.yolo._q addObject:[self.yolo extractValues:([[string_data substringFromIndex:lastIndex] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@", "]])]];
+    for (NSMutableDictionary *values in self.yolo._q) {
         if ([values[@"op"] isEqualToString:@"BufferAlloc"]) {
             [self.yolo.buffers setObject:[self.yolo.device newBufferWithLength:[values[@"size"][0] intValue] options:MTLResourceStorageModeShared] forKey:values[@"buffer_num"][0]];
         } else if ([values[@"op"] isEqualToString:@"CopyIn"]) {
             id<MTLBuffer> buffer = self.yolo.buffers[values[@"buffer_num"][0]];
-            NSData *data = _h[values[@"datahash"][0]];
+            NSData *data = self.yolo._h[values[@"datahash"][0]];
             memcpy(buffer.contents, data.bytes, data.length);
             input_buffer = values[@"buffer_num"][0];
         } else if ([values[@"op"] isEqualToString:@"ProgramAlloc"]) {
             if ([self.yolo.pipeline_states objectForKey:@[values[@"name"][0],values[@"datahash"][0]]]) continue;
-            NSString *prg = [[NSString alloc] initWithData:_h[values[@"datahash"][0]] encoding:NSUTF8StringEncoding];
+            NSString *prg = [[NSString alloc] initWithData:self.yolo._h[values[@"datahash"][0]] encoding:NSUTF8StringEncoding];
             NSError *error = nil;
             id<MTLLibrary> library = [self.yolo.device newLibraryWithSource:prg
                                                           options:nil
@@ -98,8 +95,8 @@ NSString *output_buffer;
             output_buffer = values[@"buffer_num"][0];
         }
     }
-    _q = [_q_exec mutableCopy];
-    [_h removeAllObjects];
+    self.yolo._q = [_q_exec mutableCopy];
+    [self.yolo._h removeAllObjects];
 }
 
 - (void)dealloc {
@@ -310,7 +307,7 @@ NSString *output_buffer;
     free(rgbData);
     CFRelease(rawData);
     
-    for (NSMutableDictionary *values in _q) {
+    for (NSMutableDictionary *values in self.yolo._q) {
         id<MTLCommandBuffer> command_buffer = [self.yolo.mtl_queue commandBuffer];
         id<MTLComputeCommandEncoder> encoder = [command_buffer computeCommandEncoder];
         [encoder setComputePipelineState:self.yolo.pipeline_states[@[values[@"name"][0],values[@"datahash"][0]]]];

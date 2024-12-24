@@ -12,6 +12,8 @@ NSMutableArray<id<MTLCommandBuffer>> *mtl_buffers_in_flight;
 int yolo_res;
 NSArray *yolo_classes;
 CFDataRef data;
+NSMutableDictionary *_h;
+NSMutableArray *_q;
 
 - (instancetype)init {
     self = [super init];

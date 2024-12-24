@@ -13,6 +13,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) int yolo_res;
 @property (nonatomic, strong) NSArray *yolo_classes;
 @property (nonatomic, assign) CFDataRef data;
+@property (nonatomic, strong) NSMutableDictionary *_h;
+@property (nonatomic, strong) NSMutableArray *_q;
 
 // Initializer
 - (instancetype)init;
