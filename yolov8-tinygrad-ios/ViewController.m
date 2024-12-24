@@ -11,6 +11,8 @@
 @property (nonatomic, strong) UILabel *fpsLabel;  // Label to display the FPS
 @property (nonatomic, assign) CFTimeInterval lastFrameTime;  // Time when the last frame was captured
 @property (nonatomic, assign) NSUInteger frameCount;  // Number of frames captured
+@property (nonatomic, strong) Yolo *yolo;
+- (NSArray *)processOutput:(const float *)output outputLength:(int)outputLength imgWidth:(float)imgWidth imgHeight:(float)imgHeight;
 
 @end
 
@@ -32,6 +34,7 @@ int yolo_res;
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    self.yolo = [[Yolo alloc] init];
     [self setupYOLO];
     [self setupCamera];
     [self setupFPSLabel];
@@ -127,10 +130,10 @@ int yolo_res;
     NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:[NSString stringWithFormat:@"(%@)\\(", [ops componentsJoinedByString:@"|"]] options:0 error:nil];
     __block NSInteger lastIndex = 0;
     [regex enumerateMatchesInString:string_data options:0 range:NSMakeRange(0, string_data.length) usingBlock:^(NSTextCheckingResult *match, NSMatchingFlags flags, BOOL *stop) {
-        [_q addObject:extractValues([[string_data substringWithRange:NSMakeRange(lastIndex, match.range.location - lastIndex)] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@", "]])];
+        [_q addObject:[self.yolo extractValues:([[string_data substringWithRange:NSMakeRange(lastIndex, match.range.location - lastIndex)] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@", "]])]];
         lastIndex = match.range.location;
     }];
-    [_q addObject:extractValues([[string_data substringFromIndex:lastIndex] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@", "]])];
+    [_q addObject:[self.yolo extractValues:([[string_data substringFromIndex:lastIndex] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@", "]])]];
     for (NSMutableDictionary *values in _q) {
         if ([values[@"op"] isEqualToString:@"BufferAlloc"]) {
             [buffers setObject:[device newBufferWithLength:[values[@"size"][0] intValue] options:MTLResourceStorageModeShared] forKey:values[@"buffer_num"][0]];
@@ -174,7 +177,6 @@ int yolo_res;
 }
 
 #pragma mark - Camera Setup
-
 - (void)setupCamera {
     self.captureSession = [[AVCaptureSession alloc] init];
     self.captureSession.sessionPreset = AVCaptureSessionPresetPhoto;
@@ -199,7 +201,7 @@ int yolo_res;
     [self.captureSession startRunning];
 }
 
-NSArray *processOutput(const float *output, int outputLength, float imgWidth, float imgHeight) {
+- (NSArray *)processOutput:(const float *)output outputLength:(int)outputLength imgWidth:(float)imgWidth imgHeight:(float)imgHeight {
     NSMutableArray *boxes = [NSMutableArray array];
     int modelInputSize = yolo_res;
     int numPredictions = pow(modelInputSize / 32, 2) * 21;
@@ -245,7 +247,7 @@ NSArray *processOutput(const float *output, int outputLength, float imgWidth, fl
 
         NSMutableArray *filteredBoxes = [NSMutableArray array];
         for (NSArray *box in boxes) {
-            if (iouBetweenBox(bestBox, box) < 0.7) {
+            if ([self.yolo iouBetweenBox:bestBox andBox:box] < 0.7) {
                 [filteredBoxes addObject:box];
             }
         }
@@ -401,7 +403,7 @@ NSArray *processOutput(const float *output, int outputLength, float imgWidth, fl
     const void *bufferPointer = buffer.contents;
     float *floatArray = malloc(buffer.length);
     memcpy(floatArray, bufferPointer, buffer.length);
-    NSArray *output = processOutput(floatArray,buffer.length / 4,yolo_res,yolo_res);
+    NSArray *output = [self processOutput:floatArray outputLength:buffer.length / 4 imgWidth:yolo_res imgHeight:yolo_res];
     NSMutableString *classNamesString = [NSMutableString string];
     for (int i = 0; i < output.count; i++) {
         //uiImage = drawSquareOnImage(uiImage, [output[i][0] floatValue], [output[i][1] floatValue], [output[i][2] floatValue], [output[i][3] floatValue], [output[i][4] intValue]);
@@ -470,4 +472,3 @@ NSArray *processOutput(const float *output, int outputLength, float imgWidth, fl
 }
 
 @end
-
