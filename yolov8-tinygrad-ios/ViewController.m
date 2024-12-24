@@ -18,8 +18,6 @@
 
 @implementation ViewController
 
-NSMutableArray<id<MTLCommandBuffer>> *mtl_buffers_in_flight;
-id<MTLCommandQueue> mtl_queue;
 CFDataRef data;
 NSMutableArray *_q;
 NSMutableDictionary *_h;
@@ -39,8 +37,6 @@ int yolo_res;
 }
 
 - (void)setupYOLO {
-    mtl_queue = [self.yolo.device newCommandQueueWithMaxCommandBufferCount:1024];
-    mtl_buffers_in_flight = [[NSMutableArray alloc] init];
     yolo_res = 640;
     
     yolo_classes = @[
@@ -371,7 +367,7 @@ int yolo_res;
     CFRelease(rawData);
     
     for (NSMutableDictionary *values in _q) {
-        id<MTLCommandBuffer> command_buffer = [mtl_queue commandBuffer];
+        id<MTLCommandBuffer> command_buffer = [self.yolo.mtl_queue commandBuffer];
         id<MTLComputeCommandEncoder> encoder = [command_buffer computeCommandEncoder];
         [encoder setComputePipelineState:self.yolo.pipeline_states[@[values[@"name"][0],values[@"datahash"][0]]]];
         for(int i = 0; i < [(NSArray *)values[@"bufs"] count]; i++){
@@ -386,13 +382,13 @@ int yolo_res;
         [encoder dispatchThreadgroups:global_size threadsPerThreadgroup:local_size];
         [encoder endEncoding];
         [command_buffer commit];
-        [mtl_buffers_in_flight addObject: command_buffer];
+        [self.yolo.mtl_buffers_in_flight addObject: command_buffer];
     }
 
-    for(int i = 0; i < mtl_buffers_in_flight.count; i++){
-        [mtl_buffers_in_flight[i] waitUntilCompleted];
+    for(int i = 0; i < self.yolo.mtl_buffers_in_flight.count; i++){
+        [self.yolo.mtl_buffers_in_flight[i] waitUntilCompleted];
     }
-    [mtl_buffers_in_flight removeAllObjects];
+    [self.yolo.mtl_buffers_in_flight removeAllObjects];
     buffer = self.yolo.buffers[output_buffer];
     const void *bufferPointer = buffer.contents;
     float *floatArray = malloc(buffer.length);

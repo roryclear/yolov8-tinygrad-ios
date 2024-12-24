@@ -8,6 +8,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) id<MTLDevice> device;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, id> *pipeline_states;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, id> *buffers;
+@property (nonatomic, strong) id<MTLCommandQueue> mtl_queue;
+@property (nonatomic, strong) NSMutableArray<id<MTLCommandBuffer>> *mtl_buffers_in_flight;
 
 // Initializer
 - (instancetype)init;

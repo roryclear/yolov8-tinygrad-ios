@@ -6,6 +6,8 @@
 id<MTLDevice> device;
 NSMutableDictionary<NSString *, id> *pipeline_states;
 NSMutableDictionary<NSString *, id> *buffers;
+id<MTLCommandQueue> mtl_queue;
+NSMutableArray<id<MTLCommandBuffer>> *mtl_buffers_in_flight;
 
 // Initializer
 - (instancetype)init {
@@ -14,6 +16,8 @@ NSMutableDictionary<NSString *, id> *buffers;
         self.device = MTLCreateSystemDefaultDevice();
         self.pipeline_states = [[NSMutableDictionary alloc] init];
         self.buffers = [[NSMutableDictionary alloc] init];
+        self.mtl_queue = [self.device newCommandQueueWithMaxCommandBufferCount:1024];
+        self.mtl_buffers_in_flight = [[NSMutableArray alloc] init];
     }
     return self;
 }
