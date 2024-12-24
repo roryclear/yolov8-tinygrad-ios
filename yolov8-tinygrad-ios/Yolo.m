@@ -76,6 +76,72 @@ NSString *output_buffer;
     NSData *ns_data = [NSData dataWithContentsOfFile:filePath];
     self.data = CFDataCreate(NULL, [ns_data bytes], [ns_data length]);
     
+    const UInt8 *bytes = CFDataGetBytePtr(self.data);
+    NSInteger length = CFDataGetLength(self.data);
+    NSData *range_data;
+    self._h = [[NSMutableDictionary alloc] init];
+    NSInteger ptr = 0;
+    NSString *string_data;
+    NSMutableString *datahash = [NSMutableString stringWithCapacity:0x40];
+    while (ptr < length) {
+        NSData *slicedData = [NSData dataWithBytes:bytes + ptr + 0x20 length:0x28 - 0x20];
+        uint64_t datalen = 0;
+        [slicedData getBytes:&datalen length:sizeof(datalen)];
+        datalen = CFSwapInt64LittleToHost(datalen);
+        const UInt8 *datahash_bytes = bytes + ptr;
+        datahash = [NSMutableString stringWithCapacity:0x40];
+        for (int i = 0; i < 0x20; i++) {
+            [datahash appendFormat:@"%02x", datahash_bytes[i]];
+        }
+        range_data = [NSData dataWithBytes:bytes + (ptr + 0x28) length:datalen];
+        self._h[datahash] = range_data;
+        ptr += 0x28 + datalen;
+    }
+    CFRelease(self.data);
+    string_data = [[NSString alloc] initWithData:range_data encoding:NSUTF8StringEncoding];
+    self._q = [NSMutableArray array];
+    NSMutableArray *_q_exec = [NSMutableArray array];
+    NSArray *ops = @[@"BufferAlloc", @"CopyIn", @"ProgramAlloc",@"ProgramExec",@"CopyOut"];
+    NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:[NSString stringWithFormat:@"(%@)\\(", [ops componentsJoinedByString:@"|"]] options:0 error:nil];
+    __block NSInteger lastIndex = 0;
+    [regex enumerateMatchesInString:string_data options:0 range:NSMakeRange(0, string_data.length) usingBlock:^(NSTextCheckingResult *match, NSMatchingFlags flags, BOOL *stop) {
+        [self._q addObject:[self extractValues:([[string_data substringWithRange:NSMakeRange(lastIndex, match.range.location - lastIndex)] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@", "]])]];
+        lastIndex = match.range.location;
+    }];
+    [self._q addObject:[self extractValues:([[string_data substringFromIndex:lastIndex] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@", "]])]];
+    for (NSMutableDictionary *values in self._q) {
+        if ([values[@"op"] isEqualToString:@"BufferAlloc"]) {
+            [self.buffers setObject:[self.device newBufferWithLength:[values[@"size"][0] intValue] options:MTLResourceStorageModeShared] forKey:values[@"buffer_num"][0]];
+        } else if ([values[@"op"] isEqualToString:@"CopyIn"]) {
+            id<MTLBuffer> buffer = self.buffers[values[@"buffer_num"][0]];
+            NSData *data = self._h[values[@"datahash"][0]];
+            memcpy(buffer.contents, data.bytes, data.length);
+            self.input_buffer = values[@"buffer_num"][0];
+        } else if ([values[@"op"] isEqualToString:@"ProgramAlloc"]) {
+            if ([self.pipeline_states objectForKey:@[values[@"name"][0],values[@"datahash"][0]]]) continue;
+            NSString *prg = [[NSString alloc] initWithData:self._h[values[@"datahash"][0]] encoding:NSUTF8StringEncoding];
+            NSError *error = nil;
+            id<MTLLibrary> library = [self.device newLibraryWithSource:prg
+                                                          options:nil
+                                                            error:&error];
+            MTLComputePipelineDescriptor *descriptor = [[MTLComputePipelineDescriptor alloc] init];
+            descriptor.computeFunction = [library newFunctionWithName:values[@"name"][0]];;
+            descriptor.supportIndirectCommandBuffers = YES;
+            MTLComputePipelineReflection *reflection = nil;
+            id<MTLComputePipelineState> pipeline_state = [self.device newComputePipelineStateWithDescriptor:descriptor
+                                                                                               options:MTLPipelineOptionNone
+                                                                                            reflection:&reflection
+                                                                                                 error:&error];
+            [self.pipeline_states setObject:pipeline_state forKey:@[values[@"name"][0],values[@"datahash"][0]]];
+        } else if ([values[@"op"] isEqualToString:@"ProgramExec"]) {
+            [_q_exec addObject:values];
+        } else if ([values[@"op"] isEqualToString:@"CopyOut"]) {
+            self.output_buffer = values[@"buffer_num"][0];
+        }
+    }
+    self._q = [_q_exec mutableCopy];
+    [self._h removeAllObjects];
+    
     return self;
 }
 
