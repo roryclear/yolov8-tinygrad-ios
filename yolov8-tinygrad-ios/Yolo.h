@@ -18,7 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) NSMutableArray *_q;
 @property (nonatomic, strong) NSString *input_buffer;
 @property (nonatomic, strong) NSString *output_buffer;
-- (NSArray *)yolo:(CGImageRef)cgImage;
+- (NSArray *)yolo_infer:(CGImageRef)cgImage;
 
 // Initializer
 - (instancetype)init;

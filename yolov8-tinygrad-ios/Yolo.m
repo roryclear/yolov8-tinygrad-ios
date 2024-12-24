@@ -245,7 +245,7 @@ NSString *output_buffer;
     return values;
 }
 
-- (NSArray *)yolo:(CGImageRef)cgImage {
+- (NSArray *)yolo_infer:(CGImageRef)cgImage {
     CFDataRef rawData = CGDataProviderCopyData(CGImageGetDataProvider(cgImage));
     const UInt8 *rawBytes = CFDataGetBytePtr(rawData);
     size_t length = CFDataGetLength(rawData);

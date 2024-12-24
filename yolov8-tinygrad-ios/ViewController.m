@@ -189,7 +189,7 @@ NSMutableDictionary *classColorMap;
     self.latestFrame = [UIImage imageWithCGImage:cgImage];
 
     dispatch_async(dispatch_get_main_queue(), ^{
-        NSArray *output = [self.yolo yolo:cgImage];
+        NSArray *output = [self.yolo yolo_infer:cgImage];
         CGImageRelease(cgImage);
 
         [self resetSquares];
