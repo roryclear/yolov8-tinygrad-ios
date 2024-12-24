@@ -1,12 +1,15 @@
 #import "Yolo.h"
+#import <Metal/Metal.h>
 
 @implementation Yolo
+
+id<MTLDevice> device;
 
 // Initializer
 - (instancetype)init {
     self = [super init];
     if (self) {
-        // Initial setup, if needed.
+        self.device = MTLCreateSystemDefaultDevice();
     }
     return self;
 }

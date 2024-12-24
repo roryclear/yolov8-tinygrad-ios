@@ -18,7 +18,6 @@
 
 @implementation ViewController
 
-id<MTLDevice> device;
 NSMutableDictionary<NSString *, id> *pipeline_states;
 NSMutableDictionary<NSString *, id> *buffers;
 NSMutableArray<id<MTLCommandBuffer>> *mtl_buffers_in_flight;
@@ -44,8 +43,7 @@ int yolo_res;
 - (void)setupYOLO {
     pipeline_states = [[NSMutableDictionary alloc] init];
     buffers = [[NSMutableDictionary alloc] init];
-    device = MTLCreateSystemDefaultDevice();
-    mtl_queue = [device newCommandQueueWithMaxCommandBufferCount:1024];
+    mtl_queue = [self.yolo.device newCommandQueueWithMaxCommandBufferCount:1024];
     mtl_buffers_in_flight = [[NSMutableArray alloc] init];
     yolo_res = 640;
     
@@ -136,7 +134,7 @@ int yolo_res;
     [_q addObject:[self.yolo extractValues:([[string_data substringFromIndex:lastIndex] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@", "]])]];
     for (NSMutableDictionary *values in _q) {
         if ([values[@"op"] isEqualToString:@"BufferAlloc"]) {
-            [buffers setObject:[device newBufferWithLength:[values[@"size"][0] intValue] options:MTLResourceStorageModeShared] forKey:values[@"buffer_num"][0]];
+            [buffers setObject:[self.yolo.device newBufferWithLength:[values[@"size"][0] intValue] options:MTLResourceStorageModeShared] forKey:values[@"buffer_num"][0]];
         } else if ([values[@"op"] isEqualToString:@"CopyIn"]) {
             id<MTLBuffer> buffer = buffers[values[@"buffer_num"][0]];
             NSData *data = _h[values[@"datahash"][0]];
@@ -146,14 +144,14 @@ int yolo_res;
             if ([pipeline_states objectForKey:@[values[@"name"][0],values[@"datahash"][0]]]) continue;
             NSString *prg = [[NSString alloc] initWithData:_h[values[@"datahash"][0]] encoding:NSUTF8StringEncoding];
             NSError *error = nil;
-            id<MTLLibrary> library = [device newLibraryWithSource:prg
+            id<MTLLibrary> library = [self.yolo.device newLibraryWithSource:prg
                                                           options:nil
                                                             error:&error];
             MTLComputePipelineDescriptor *descriptor = [[MTLComputePipelineDescriptor alloc] init];
             descriptor.computeFunction = [library newFunctionWithName:values[@"name"][0]];;
             descriptor.supportIndirectCommandBuffers = YES;
             MTLComputePipelineReflection *reflection = nil;
-            id<MTLComputePipelineState> pipeline_state = [device newComputePipelineStateWithDescriptor:descriptor
+            id<MTLComputePipelineState> pipeline_state = [self.yolo.device newComputePipelineStateWithDescriptor:descriptor
                                                                                                options:MTLPipelineOptionNone
                                                                                             reflection:&reflection
                                                                                                  error:&error];

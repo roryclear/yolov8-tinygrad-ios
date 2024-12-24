@@ -1,8 +1,11 @@
 #import <Foundation/Foundation.h>
+#import <Metal/Metal.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface Yolo : NSObject
+
+@property (nonatomic, strong) id<MTLDevice> device;
 
 // Initializer
 - (instancetype)init;
