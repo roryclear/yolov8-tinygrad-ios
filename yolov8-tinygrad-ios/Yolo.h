@@ -10,6 +10,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) NSMutableDictionary<NSString *, id> *buffers;
 @property (nonatomic, strong) id<MTLCommandQueue> mtl_queue;
 @property (nonatomic, strong) NSMutableArray<id<MTLCommandBuffer>> *mtl_buffers_in_flight;
+@property (nonatomic, assign) int yolo_res;
+@property (nonatomic, strong) NSArray *yolo_classes;
 
 // Initializer
 - (instancetype)init;

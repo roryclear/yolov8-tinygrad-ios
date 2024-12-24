@@ -22,10 +22,8 @@ CFDataRef data;
 NSMutableArray *_q;
 NSMutableDictionary *_h;
 NSMutableDictionary *classColorMap;
-NSArray *yolo_classes;
 NSString *input_buffer;
 NSString *output_buffer;
-int yolo_res;
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -37,54 +35,10 @@ int yolo_res;
 }
 
 - (void)setupYOLO {
-    yolo_res = 640;
-    
-    yolo_classes = @[
-        @[@"person", [UIColor redColor]],@[@"bicycle", [UIColor greenColor]],@[@"car", [UIColor blueColor]],
-        @[@"motorcycle", [UIColor cyanColor]],@[@"airplane", [UIColor magentaColor]],@[@"bus", [UIColor yellowColor]],
-        @[@"train", [UIColor orangeColor]],@[@"truck", [UIColor purpleColor]],@[@"boat", [UIColor brownColor]],
-        @[@"traffic light", [UIColor colorWithRed:0.5 green:0.7 blue:0.2 alpha:1.0]],@[@"fire hydrant", [UIColor colorWithRed:0.8 green:0.1 blue:0.1 alpha:1.0]],
-        @[@"stop sign", [UIColor colorWithRed:0.3 green:0.3 blue:0.8 alpha:1.0]],@[@"parking meter", [UIColor colorWithRed:0.7 green:0.5 blue:0.3 alpha:1.0]],
-        @[@"bench", [UIColor colorWithRed:0.4 green:0.4 blue:0.2 alpha:1.0]],@[@"bird", [UIColor colorWithRed:0.1 green:0.5 blue:0.9 alpha:1.0]],
-        @[@"cat", [UIColor colorWithRed:0.8 green:0.2 blue:0.6 alpha:1.0]],@[@"dog", [UIColor colorWithRed:0.9 green:0.3 blue:0.3 alpha:1.0]],
-        @[@"horse", [UIColor colorWithRed:0.2 green:0.6 blue:0.7 alpha:1.0]],@[@"sheep", [UIColor colorWithRed:0.7 green:0.3 blue:0.5 alpha:1.0]],
-        @[@"cow", [UIColor colorWithRed:0.4 green:0.8 blue:0.4 alpha:1.0]],@[@"elephant", [UIColor colorWithRed:0.3 green:0.4 blue:0.9 alpha:1.0]],
-        @[@"bear", [UIColor colorWithRed:0.6 green:0.2 blue:0.8 alpha:1.0]],@[@"zebra", [UIColor colorWithRed:0.8 green:0.5 blue:0.2 alpha:1.0]],
-        @[@"giraffe", [UIColor colorWithRed:0.5 green:0.9 blue:0.1 alpha:1.0]],@[@"backpack", [UIColor colorWithRed:0.3 green:0.7 blue:0.4 alpha:1.0]],
-        @[@"umbrella", [UIColor colorWithRed:0.4 green:0.6 blue:0.9 alpha:1.0]],@[@"handbag", [UIColor colorWithRed:0.9 green:0.2 blue:0.5 alpha:1.0]],
-        @[@"tie", [UIColor colorWithRed:0.5 green:0.3 blue:0.7 alpha:1.0]],@[@"suitcase", [UIColor colorWithRed:0.6 green:0.7 blue:0.2 alpha:1.0]],
-        @[@"frisbee", [UIColor colorWithRed:0.7 green:0.2 blue:0.4 alpha:1.0]],@[@"skis", [UIColor colorWithRed:0.3 green:0.9 blue:0.3 alpha:1.0]],
-        @[@"snowboard", [UIColor colorWithRed:0.8 green:0.1 blue:0.6 alpha:1.0]],@[@"sports ball", [UIColor colorWithRed:0.4 green:0.3 blue:0.8 alpha:1.0]],
-        @[@"kite", [UIColor colorWithRed:0.2 green:0.5 blue:0.7 alpha:1.0]],@[@"baseball bat", [UIColor colorWithRed:0.6 green:0.4 blue:0.2 alpha:1.0]],
-        @[@"baseball glove", [UIColor colorWithRed:0.7 green:0.1 blue:0.4 alpha:1.0]],@[@"skateboard", [UIColor colorWithRed:0.5 green:0.8 blue:0.5 alpha:1.0]],
-        @[@"surfboard", [UIColor colorWithRed:0.8 green:0.3 blue:0.6 alpha:1.0]],@[@"tennis racket", [UIColor colorWithRed:0.2 green:0.7 blue:0.9 alpha:1.0]],
-        @[@"bottle", [UIColor colorWithRed:0.9 green:0.2 blue:0.3 alpha:1.0]],@[@"wine glass", [UIColor colorWithRed:0.6 green:0.6 blue:0.3 alpha:1.0]],
-        @[@"cup", [UIColor colorWithRed:0.3 green:0.4 blue:0.9 alpha:1.0]],@[@"fork", [UIColor colorWithRed:0.4 green:0.7 blue:0.2 alpha:1.0]],
-        @[@"knife", [UIColor colorWithRed:0.8 green:0.2 blue:0.5 alpha:1.0]],@[@"spoon", [UIColor colorWithRed:0.6 green:0.3 blue:0.7 alpha:1.0]],
-        @[@"bowl", [UIColor colorWithRed:0.2 green:0.8 blue:0.4 alpha:1.0]],@[@"banana", [UIColor colorWithRed:0.7 green:0.7 blue:0.1 alpha:1.0]],
-        @[@"apple", [UIColor colorWithRed:0.9 green:0.1 blue:0.4 alpha:1.0]],@[@"sandwich", [UIColor colorWithRed:0.4 green:0.5 blue:0.8 alpha:1.0]],
-        @[@"orange", [UIColor colorWithRed:0.8 green:0.6 blue:0.2 alpha:1.0]],@[@"broccoli", [UIColor colorWithRed:0.3 green:0.8 blue:0.3 alpha:1.0]],
-        @[@"carrot", [UIColor colorWithRed:0.7 green:0.2 blue:0.6 alpha:1.0]],@[@"hot dog", [UIColor colorWithRed:0.9 green:0.3 blue:0.5 alpha:1.0]],
-        @[@"pizza", [UIColor colorWithRed:0.5 green:0.3 blue:0.8 alpha:1.0]],@[@"donut", [UIColor colorWithRed:0.8 green:0.1 blue:0.4 alpha:1.0]],
-        @[@"cake", [UIColor colorWithRed:0.7 green:0.5 blue:0.1 alpha:1.0]],@[@"chair", [UIColor colorWithRed:0.6 green:0.2 blue:0.4 alpha:1.0]],
-        @[@"couch", [UIColor colorWithRed:0.4 green:0.6 blue:0.2 alpha:1.0]],@[@"potted plant", [UIColor colorWithRed:0.8 green:0.4 blue:0.5 alpha:1.0]],
-        @[@"bed", [UIColor colorWithRed:0.3 green:0.7 blue:0.7 alpha:1.0]],@[@"dining table", [UIColor colorWithRed:0.5 green:0.8 blue:0.3 alpha:1.0]],
-        @[@"toilet", [UIColor colorWithRed:0.7 green:0.4 blue:0.6 alpha:1.0]],@[@"tv", [UIColor colorWithRed:0.9 green:0.5 blue:0.2 alpha:1.0]],
-        @[@"laptop", [UIColor colorWithRed:0.6 green:0.3 blue:0.7 alpha:1.0]],@[@"mouse", [UIColor colorWithRed:0.2 green:0.9 blue:0.5 alpha:1.0]],
-        @[@"remote", [UIColor colorWithRed:0.8 green:0.4 blue:0.3 alpha:1.0]],@[@"keyboard", [UIColor colorWithRed:0.3 green:0.6 blue:0.8 alpha:1.0]],
-        @[@"cell phone", [UIColor colorWithRed:0.7 green:0.3 blue:0.9 alpha:1.0]],@[@"microwave", [UIColor colorWithRed:0.4 green:0.9 blue:0.4 alpha:1.0]],
-        @[@"oven", [UIColor colorWithRed:0.5 green:0.7 blue:0.2 alpha:1.0]],@[@"toaster", [UIColor colorWithRed:0.9 green:0.2 blue:0.3 alpha:1.0]],
-        @[@"sink", [UIColor colorWithRed:0.6 green:0.8 blue:0.3 alpha:1.0]],@[@"refrigerator", [UIColor colorWithRed:0.8 green:0.4 blue:0.7 alpha:1.0]],
-        @[@"book", [UIColor colorWithRed:0.3 green:0.5 blue:0.9 alpha:1.0]],@[@"clock", [UIColor colorWithRed:0.7 green:0.7 blue:0.2 alpha:1.0]],
-        @[@"vase", [UIColor colorWithRed:0.9 green:0.4 blue:0.5 alpha:1.0]],@[@"scissors", [UIColor colorWithRed:0.2 green:0.7 blue:0.8 alpha:1.0]],
-        @[@"teddy bear", [UIColor colorWithRed:0.6 green:0.3 blue:0.9 alpha:1.0]],@[@"hair drier", [UIColor colorWithRed:0.8 green:0.2 blue:0.3 alpha:1.0]],
-        @[@"toothbrush", [UIColor colorWithRed:0.4 green:0.7 blue:0.6 alpha:1.0]]
-    ];
-
     NSString *documentsPath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
-    NSString *filePath = [documentsPath stringByAppendingPathComponent:[NSString stringWithFormat:@"batch_req_%dx%d", yolo_res, yolo_res]];
+    NSString *filePath = [documentsPath stringByAppendingPathComponent:[NSString stringWithFormat:@"batch_req_%dx%d", self.yolo.yolo_res, self.yolo.yolo_res]];
     if (![[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
-        NSData *data = [NSData dataWithContentsOfURL:[NSURL URLWithString:[NSString stringWithFormat:@"https://raw.githubusercontent.com/roryclear/yolov8-tinygrad-ios/main/batch_req_%dx%d",yolo_res,yolo_res]]];
+        NSData *data = [NSData dataWithContentsOfURL:[NSURL URLWithString:[NSString stringWithFormat:@"https://raw.githubusercontent.com/roryclear/yolov8-tinygrad-ios/main/batch_req_%dx%d",self.yolo.yolo_res,self.yolo.yolo_res]]];
         [data writeToFile:filePath atomically:YES];
     }
     NSData *ns_data = [NSData dataWithContentsOfFile:filePath];
@@ -193,14 +147,14 @@ int yolo_res;
 
 - (NSArray *)processOutput:(const float *)output outputLength:(int)outputLength imgWidth:(float)imgWidth imgHeight:(float)imgHeight {
     NSMutableArray *boxes = [NSMutableArray array];
-    int modelInputSize = yolo_res;
+    int modelInputSize = self.yolo.yolo_res;
     int numPredictions = pow(modelInputSize / 32, 2) * 21;
 
     for (int index = 0; index < numPredictions; index++) {
         int classId = 0;
         float prob = 0.0;
 
-        for (int col = 0; col < yolo_classes.count; col++) {
+        for (int col = 0; col < self.yolo.yolo_classes.count; col++) {
             float confidence = output[numPredictions * (col + 4) + index];
             if (confidence > prob) {
                 prob = confidence;
@@ -248,13 +202,13 @@ int yolo_res;
 
 - (void)drawSquareWithTopLeftX:(CGFloat)xOrigin topLeftY:(CGFloat)yOrigin bottomRightX:(CGFloat)bottomRightX bottomRightY:(CGFloat)bottomRightY classIndex:(int)classIndex aspectRatio:(float)aspectRatio {
     CGFloat minDimension = MIN(self.view.bounds.size.width, self.view.bounds.size.height);
-    CGFloat height = yolo_res / aspectRatio;
+    CGFloat height = self.yolo.yolo_res / aspectRatio;
     CGFloat leftEdgeX = (self.view.bounds.size.width - (minDimension * aspectRatio)) / 2;
-    CGFloat scaledXOrigin = leftEdgeX + (xOrigin * aspectRatio / yolo_res) * minDimension;
+    CGFloat scaledXOrigin = leftEdgeX + (xOrigin * aspectRatio / self.yolo.yolo_res) * minDimension;
     CGFloat scaledYOrigin = (yOrigin / height) * minDimension;
-    CGFloat scaledWidth = (bottomRightX - xOrigin) * (aspectRatio * minDimension / yolo_res);
+    CGFloat scaledWidth = (bottomRightX - xOrigin) * (aspectRatio * minDimension / self.yolo.yolo_res);
     CGFloat scaledHeight = (bottomRightY - yOrigin) * (minDimension / height);
-    UIColor *color = yolo_classes[classIndex][1];
+    UIColor *color = self.yolo.yolo_classes[classIndex][1];
     CAShapeLayer *squareLayer = [CAShapeLayer layer];
     squareLayer.name = @"rectangleLayer";
     squareLayer.strokeColor = color.CGColor;
@@ -264,7 +218,7 @@ int yolo_res;
     
     [self.view.layer addSublayer:squareLayer];
     
-    NSString *className = yolo_classes[classIndex][0];
+    NSString *className = self.yolo.yolo_classes[classIndex][0];
     NSDictionary *textAttributes = @{NSFontAttributeName: [UIFont systemFontOfSize:12],
                                      NSForegroundColorAttributeName: [UIColor whiteColor]};
     NSString *labelText = [className lowercaseString];
@@ -393,11 +347,11 @@ int yolo_res;
     const void *bufferPointer = buffer.contents;
     float *floatArray = malloc(buffer.length);
     memcpy(floatArray, bufferPointer, buffer.length);
-    NSArray *output = [self processOutput:floatArray outputLength:buffer.length / 4 imgWidth:yolo_res imgHeight:yolo_res];
+    NSArray *output = [self processOutput:floatArray outputLength:buffer.length / 4 imgWidth:self.yolo.yolo_res imgHeight:self.yolo.yolo_res];
     NSMutableString *classNamesString = [NSMutableString string];
     for (int i = 0; i < output.count; i++) {
         //uiImage = drawSquareOnImage(uiImage, [output[i][0] floatValue], [output[i][1] floatValue], [output[i][2] floatValue], [output[i][3] floatValue], [output[i][4] intValue]);
-        [classNamesString appendString:yolo_classes[[output[i][4] intValue]][0]];
+        [classNamesString appendString:self.yolo.yolo_classes[[output[i][4] intValue]][0]];
         if (i < output.count - 1) [classNamesString appendString:@", "];
     }
     NSLog(@"Class Names: %@", classNamesString);
@@ -412,7 +366,7 @@ int yolo_res;
     size_t height = CVPixelBufferGetHeight(imageBuffer);
     
     CGFloat aspect_ratio = (CGFloat)width / (CGFloat)height;
-    CGFloat targetWidth = yolo_res;
+    CGFloat targetWidth = self.yolo.yolo_res;
     CGFloat aspectRatio = (CGFloat)width / (CGFloat)height;
     CGSize targetSize = CGSizeMake(targetWidth, targetWidth / aspectRatio);
 
