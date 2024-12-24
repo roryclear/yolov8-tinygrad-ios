@@ -18,7 +18,6 @@
 
 @implementation ViewController
 
-CFDataRef data;
 NSMutableArray *_q;
 NSMutableDictionary *_h;
 NSMutableDictionary *classColorMap;
@@ -34,18 +33,9 @@ NSString *output_buffer;
     self.previewLayer.connection.videoOrientation = AVCaptureVideoOrientationLandscapeRight;
 }
 
-- (void)setupYOLO {
-    NSString *documentsPath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
-    NSString *filePath = [documentsPath stringByAppendingPathComponent:[NSString stringWithFormat:@"batch_req_%dx%d", self.yolo.yolo_res, self.yolo.yolo_res]];
-    if (![[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
-        NSData *data = [NSData dataWithContentsOfURL:[NSURL URLWithString:[NSString stringWithFormat:@"https://raw.githubusercontent.com/roryclear/yolov8-tinygrad-ios/main/batch_req_%dx%d",self.yolo.yolo_res,self.yolo.yolo_res]]];
-        [data writeToFile:filePath atomically:YES];
-    }
-    NSData *ns_data = [NSData dataWithContentsOfFile:filePath];
-    data = CFDataCreate(NULL, [ns_data bytes], [ns_data length]);
-    
-    const UInt8 *bytes = CFDataGetBytePtr(data);
-    NSInteger length = CFDataGetLength(data);
+- (void)setupYOLO {    
+    const UInt8 *bytes = CFDataGetBytePtr(self.yolo.data);
+    NSInteger length = CFDataGetLength(self.yolo.data);
 
     NSData *range_data;
     _h = [[NSMutableDictionary alloc] init];
@@ -66,7 +56,7 @@ NSString *output_buffer;
         _h[datahash] = range_data;
         ptr += 0x28 + datalen;
     }
-    CFRelease(data);
+    CFRelease(self.yolo.data);
     string_data = [[NSString alloc] initWithData:range_data encoding:NSUTF8StringEncoding];
     _q = [NSMutableArray array];
     NSMutableArray *_q_exec = [NSMutableArray array];

@@ -11,6 +11,7 @@ id<MTLCommandQueue> mtl_queue;
 NSMutableArray<id<MTLCommandBuffer>> *mtl_buffers_in_flight;
 int yolo_res;
 NSArray *yolo_classes;
+CFDataRef data;
 
 - (instancetype)init {
     self = [super init];
@@ -61,6 +62,15 @@ NSArray *yolo_classes;
         @[@"teddy bear", [UIColor colorWithRed:0.6 green:0.3 blue:0.9 alpha:1.0]],@[@"hair drier", [UIColor colorWithRed:0.8 green:0.2 blue:0.3 alpha:1.0]],
         @[@"toothbrush", [UIColor colorWithRed:0.4 green:0.7 blue:0.6 alpha:1.0]]
     ];
+    
+    NSString *documentsPath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
+    NSString *filePath = [documentsPath stringByAppendingPathComponent:[NSString stringWithFormat:@"batch_req_%dx%d", self.yolo_res, self.yolo_res]];
+    if (![[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
+        NSData *data = [NSData dataWithContentsOfURL:[NSURL URLWithString:[NSString stringWithFormat:@"https://raw.githubusercontent.com/roryclear/yolov8-tinygrad-ios/main/batch_req_%dx%d",self.yolo_res,self.yolo_res]]];
+        [data writeToFile:filePath atomically:YES];
+    }
+    NSData *ns_data = [NSData dataWithContentsOfFile:filePath];
+    self.data = CFDataCreate(NULL, [ns_data bytes], [ns_data length]);
     
     return self;
 }

@@ -12,6 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) NSMutableArray<id<MTLCommandBuffer>> *mtl_buffers_in_flight;
 @property (nonatomic, assign) int yolo_res;
 @property (nonatomic, strong) NSArray *yolo_classes;
+@property (nonatomic, assign) CFDataRef data;
 
 // Initializer
 - (instancetype)init;
