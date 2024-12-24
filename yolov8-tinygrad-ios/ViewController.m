@@ -18,8 +18,6 @@
 
 @implementation ViewController
 
-NSMutableDictionary<NSString *, id> *pipeline_states;
-NSMutableDictionary<NSString *, id> *buffers;
 NSMutableArray<id<MTLCommandBuffer>> *mtl_buffers_in_flight;
 id<MTLCommandQueue> mtl_queue;
 CFDataRef data;
@@ -41,8 +39,6 @@ int yolo_res;
 }
 
 - (void)setupYOLO {
-    pipeline_states = [[NSMutableDictionary alloc] init];
-    buffers = [[NSMutableDictionary alloc] init];
     mtl_queue = [self.yolo.device newCommandQueueWithMaxCommandBufferCount:1024];
     mtl_buffers_in_flight = [[NSMutableArray alloc] init];
     yolo_res = 640;
@@ -134,14 +130,14 @@ int yolo_res;
     [_q addObject:[self.yolo extractValues:([[string_data substringFromIndex:lastIndex] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@", "]])]];
     for (NSMutableDictionary *values in _q) {
         if ([values[@"op"] isEqualToString:@"BufferAlloc"]) {
-            [buffers setObject:[self.yolo.device newBufferWithLength:[values[@"size"][0] intValue] options:MTLResourceStorageModeShared] forKey:values[@"buffer_num"][0]];
+            [self.yolo.buffers setObject:[self.yolo.device newBufferWithLength:[values[@"size"][0] intValue] options:MTLResourceStorageModeShared] forKey:values[@"buffer_num"][0]];
         } else if ([values[@"op"] isEqualToString:@"CopyIn"]) {
-            id<MTLBuffer> buffer = buffers[values[@"buffer_num"][0]];
+            id<MTLBuffer> buffer = self.yolo.buffers[values[@"buffer_num"][0]];
             NSData *data = _h[values[@"datahash"][0]];
             memcpy(buffer.contents, data.bytes, data.length);
             input_buffer = values[@"buffer_num"][0];
         } else if ([values[@"op"] isEqualToString:@"ProgramAlloc"]) {
-            if ([pipeline_states objectForKey:@[values[@"name"][0],values[@"datahash"][0]]]) continue;
+            if ([self.yolo.pipeline_states objectForKey:@[values[@"name"][0],values[@"datahash"][0]]]) continue;
             NSString *prg = [[NSString alloc] initWithData:_h[values[@"datahash"][0]] encoding:NSUTF8StringEncoding];
             NSError *error = nil;
             id<MTLLibrary> library = [self.yolo.device newLibraryWithSource:prg
@@ -155,7 +151,7 @@ int yolo_res;
                                                                                                options:MTLPipelineOptionNone
                                                                                             reflection:&reflection
                                                                                                  error:&error];
-            [pipeline_states setObject:pipeline_state forKey:@[values[@"name"][0],values[@"datahash"][0]]];
+            [self.yolo.pipeline_states setObject:pipeline_state forKey:@[values[@"name"][0],values[@"datahash"][0]]];
         } else if ([values[@"op"] isEqualToString:@"ProgramExec"]) {
             [_q_exec addObject:values];
         } else if ([values[@"op"] isEqualToString:@"CopyOut"]) {
@@ -368,7 +364,7 @@ int yolo_res;
         rgbData[j + 1] = rawBytes[i + 1];
         rgbData[j + 2] = rawBytes[i + 2];
     }
-    id<MTLBuffer> buffer = buffers[input_buffer];
+    id<MTLBuffer> buffer = self.yolo.buffers[input_buffer];
     memset(buffer.contents, 0, buffer.length);
     memcpy(buffer.contents, rgbData, rgbLength);
     free(rgbData);
@@ -377,9 +373,9 @@ int yolo_res;
     for (NSMutableDictionary *values in _q) {
         id<MTLCommandBuffer> command_buffer = [mtl_queue commandBuffer];
         id<MTLComputeCommandEncoder> encoder = [command_buffer computeCommandEncoder];
-        [encoder setComputePipelineState:pipeline_states[@[values[@"name"][0],values[@"datahash"][0]]]];
+        [encoder setComputePipelineState:self.yolo.pipeline_states[@[values[@"name"][0],values[@"datahash"][0]]]];
         for(int i = 0; i < [(NSArray *)values[@"bufs"] count]; i++){
-            [encoder setBuffer:buffers[values[@"bufs"][i]] offset:0 atIndex:i];
+            [encoder setBuffer:self.yolo.buffers[values[@"bufs"][i]] offset:0 atIndex:i];
         }
         for (int i = 0; i < [(NSArray *)values[@"vals"] count]; i++) {
             NSInteger value = [values[@"vals"][i] integerValue];
@@ -397,7 +393,7 @@ int yolo_res;
         [mtl_buffers_in_flight[i] waitUntilCompleted];
     }
     [mtl_buffers_in_flight removeAllObjects];
-    buffer = buffers[output_buffer];
+    buffer = self.yolo.buffers[output_buffer];
     const void *bufferPointer = buffer.contents;
     float *floatArray = malloc(buffer.length);
     memcpy(floatArray, bufferPointer, buffer.length);

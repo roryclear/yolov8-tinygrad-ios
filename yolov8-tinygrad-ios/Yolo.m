@@ -4,12 +4,16 @@
 @implementation Yolo
 
 id<MTLDevice> device;
+NSMutableDictionary<NSString *, id> *pipeline_states;
+NSMutableDictionary<NSString *, id> *buffers;
 
 // Initializer
 - (instancetype)init {
     self = [super init];
     if (self) {
         self.device = MTLCreateSystemDefaultDevice();
+        self.pipeline_states = [[NSMutableDictionary alloc] init];
+        self.buffers = [[NSMutableDictionary alloc] init];
     }
     return self;
 }
