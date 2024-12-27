@@ -1,6 +1,7 @@
 #import "Yolo.h"
 #import <Metal/Metal.h>
 #import <UIKit/UIKit.h>
+#import <sys/utsname.h>
 
 @implementation Yolo
 
@@ -68,7 +69,17 @@ NSString *output_buffer;
     ];
     
     NSString *documentsPath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
-    NSString *filePath = [documentsPath stringByAppendingPathComponent:[NSString stringWithFormat:@"batch_req_%dx%d", self.yolo_res, self.yolo_res]];
+    NSString *path = @"batch_req_%dx%d";
+    
+    struct utsname systemInfo;
+    uname(&systemInfo);
+    NSString *deviceModel = [NSString stringWithCString:systemInfo.machine encoding:NSUTF8StringEncoding];
+
+    if ([deviceModel isEqualToString:@"iPhone8,4"]) {
+        path = @"batch_req_se1_%dx%d";
+    }
+    
+    NSString *filePath = [documentsPath stringByAppendingPathComponent:[NSString stringWithFormat:path, self.yolo_res, self.yolo_res]];
     if (![[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
         NSData *data = [NSData dataWithContentsOfURL:[NSURL URLWithString:[NSString stringWithFormat:@"https://raw.githubusercontent.com/roryclear/yolov8-tinygrad-ios/main/batch_req_%dx%d",self.yolo_res,self.yolo_res]]];
         [data writeToFile:filePath atomically:YES];
