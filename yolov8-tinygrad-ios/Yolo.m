@@ -75,15 +75,18 @@ NSString *output_buffer;
     uname(&systemInfo);
     NSString *deviceModel = [NSString stringWithCString:systemInfo.machine encoding:NSUTF8StringEncoding];
 
-    if ([deviceModel isEqualToString:@"iPhone8,4"]) {
+    NSString *urlPath = @"https://raw.githubusercontent.com/roryclear/yolov8-tinygrad-ios/main/batch_req_%dx%d";
+    if ([deviceModel isEqualToString:@"iPhone8,4"]) { //IPHONE SE1
         path = @"batch_req_se1_%dx%d";
+        urlPath = @"https://raw.githubusercontent.com/roryclear/yolov8-tinygrad-ios/main/batch_req_se1_%dx%d";
     }
-    
     NSString *filePath = [documentsPath stringByAppendingPathComponent:[NSString stringWithFormat:path, self.yolo_res, self.yolo_res]];
     if (![[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
-        NSData *data = [NSData dataWithContentsOfURL:[NSURL URLWithString:[NSString stringWithFormat:@"https://raw.githubusercontent.com/roryclear/yolov8-tinygrad-ios/main/batch_req_%dx%d",self.yolo_res,self.yolo_res]]];
+        NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:urlPath, self.yolo_res, self.yolo_res]];
+        NSData *data = [NSData dataWithContentsOfURL:url];
         [data writeToFile:filePath atomically:YES];
     }
+
     NSData *ns_data = [NSData dataWithContentsOfFile:filePath];
     self.data = CFDataCreate(NULL, [ns_data bytes], [ns_data length]);
     
