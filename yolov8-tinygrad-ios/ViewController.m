@@ -175,22 +175,23 @@ NSMutableDictionary *classColorMap;
     CIContext *context = [CIContext context];
     CGImageRef cgImage = [context createCGImage:croppedImage fromRect:cropRect];
     self.latestFrame = [UIImage imageWithCGImage:cgImage];
-
+    
+    __weak typeof(self) weak_self = self;
     dispatch_async(dispatch_get_main_queue(), ^{
         NSArray *output = [self.yolo yolo_infer:cgImage];
         CGImageRelease(cgImage);
         
-        [self resetSquares];
+        [weak_self resetSquares];
         for (int i = 0; i < output.count; i++) {
-            [self drawSquareWithTopLeftX:[output[i][0] floatValue]
+            [weak_self drawSquareWithTopLeftX:[output[i][0] floatValue]
                                 topLeftY:[output[i][1] floatValue]
                             bottomRightX:[output[i][2] floatValue]
                             bottomRightY:[output[i][3] floatValue]
                               classIndex:[output[i][4] intValue]
                              aspectRatio:aspect_ratio];
         }
+        [weak_self updateFPS];
     });
-    [self updateFPS];
 }
 
 #pragma mark - Update FPS
