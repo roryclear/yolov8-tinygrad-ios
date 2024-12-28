@@ -24,7 +24,51 @@ NSMutableDictionary *classColorMap;
     self.yolo = [[Yolo alloc] init];
     [self setupCamera];
     [self setupFPSLabel];
-    self.previewLayer.connection.videoOrientation = AVCaptureVideoOrientationLandscapeRight;
+    
+    // Register for device orientation changes
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(handleDeviceOrientationChange)
+                                                 name:UIDeviceOrientationDidChangeNotification
+                                               object:nil];
+    
+    // Start monitoring device orientation
+    [[UIDevice currentDevice] beginGeneratingDeviceOrientationNotifications];
+    
+    // Set initial orientation
+    [self handleDeviceOrientationChange];
+}
+
+- (void)dealloc {
+    // Stop monitoring device orientation
+    [[UIDevice currentDevice] endGeneratingDeviceOrientationNotifications];
+}
+
+#pragma mark - Handle Device Orientation Changes
+- (void)handleDeviceOrientationChange {
+    UIDeviceOrientation deviceOrientation = [[UIDevice currentDevice] orientation];
+    AVCaptureVideoOrientation videoOrientation;
+    
+    switch (deviceOrientation) {
+        case UIDeviceOrientationLandscapeLeft:
+            videoOrientation = AVCaptureVideoOrientationLandscapeRight;
+            break;
+        case UIDeviceOrientationLandscapeRight:
+            videoOrientation = AVCaptureVideoOrientationLandscapeLeft;
+            break;
+        case UIDeviceOrientationPortrait:
+            videoOrientation = AVCaptureVideoOrientationPortrait;
+            break;
+        case UIDeviceOrientationPortraitUpsideDown:
+            videoOrientation = AVCaptureVideoOrientationPortraitUpsideDown;
+            break;
+        default:
+            videoOrientation = AVCaptureVideoOrientationLandscapeRight;
+            break;
+    }
+    
+    if (self.previewLayer.connection.isVideoOrientationSupported) {
+        self.previewLayer.connection.videoOrientation = videoOrientation;
+    }
 }
 
 #pragma mark - Camera Setup
@@ -175,10 +219,13 @@ NSMutableDictionary *classColorMap;
     CIContext *context = [CIContext context];
     CGImageRef cgImage = [context createCGImage:croppedImage fromRect:cropRect];
     self.latestFrame = [UIImage imageWithCGImage:cgImage];
-    
+
+    // Get the current video orientation
+    AVCaptureVideoOrientation videoOrientation = self.previewLayer.connection.videoOrientation;
+
     __weak typeof(self) weak_self = self;
     dispatch_async(dispatch_get_main_queue(), ^{
-        NSArray *output = [self.yolo yolo_infer:cgImage];
+        NSArray *output = [self.yolo yolo_infer:cgImage withOrientation:videoOrientation];
         CGImageRelease(cgImage);
         
         [weak_self resetSquares];
@@ -193,6 +240,7 @@ NSMutableDictionary *classColorMap;
         [weak_self updateFPS];
     });
 }
+
 
 #pragma mark - Update FPS
 - (void)updateFPS {
