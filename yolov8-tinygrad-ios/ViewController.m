@@ -22,27 +22,15 @@ NSMutableDictionary *classColorMap;
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.yolo = [[Yolo alloc] init];
-    [self setupYOLO];
     [self setupCamera];
     [self setupFPSLabel];
     self.previewLayer.connection.videoOrientation = AVCaptureVideoOrientationLandscapeRight;
 }
 
-- (void)setupYOLO {    
-}
-
-- (void)dealloc {
-    [[NSNotificationCenter defaultCenter] removeObserver:self];
-    [self.captureSession stopRunning];
-    if (self.latestFrame) {
-        CGImageRelease(self.latestFrame.CGImage);
-    }
-}
-
 #pragma mark - Camera Setup
 - (void)setupCamera {
     self.captureSession = [[AVCaptureSession alloc] init];
-    self.captureSession.sessionPreset = AVCaptureSessionPreset1920x1080;
+    self.captureSession.sessionPreset = AVCaptureSessionPresetPhoto;
     AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
     NSError *error = nil;
     AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice:device error:&error];
@@ -191,7 +179,7 @@ NSMutableDictionary *classColorMap;
     dispatch_async(dispatch_get_main_queue(), ^{
         NSArray *output = [self.yolo yolo_infer:cgImage];
         CGImageRelease(cgImage);
-
+        
         [self resetSquares];
         for (int i = 0; i < output.count; i++) {
             [self drawSquareWithTopLeftX:[output[i][0] floatValue]
