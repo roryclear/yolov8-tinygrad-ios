@@ -11,6 +11,7 @@
 @property (nonatomic, assign) CFTimeInterval lastFrameTime;
 @property (nonatomic, assign) NSUInteger frameCount;
 @property (nonatomic, strong) Yolo *yolo;
+@property (nonatomic, strong) CIContext *ciContext;
 
 @end
 
@@ -20,6 +21,7 @@ NSMutableDictionary *classColorMap;
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    self.ciContext = [CIContext context];
     self.yolo = [[Yolo alloc] init];
     [self setupCamera];
     [self setupFPSLabel];
@@ -37,7 +39,6 @@ NSMutableDictionary *classColorMap;
     [[UIDevice currentDevice] endGeneratingDeviceOrientationNotifications];
 }
 
-#pragma mark - Handle Device Orientation Changes
 - (void)handleDeviceOrientationChange {
     UIDeviceOrientation deviceOrientation = [[UIDevice currentDevice] orientation];
     AVCaptureVideoOrientation videoOrientation;
@@ -65,7 +66,6 @@ NSMutableDictionary *classColorMap;
     }
 }
 
-#pragma mark - Camera Setup
 - (void)setupCamera {
     self.captureSession = [[AVCaptureSession alloc] init];
     self.captureSession.sessionPreset = AVCaptureSessionPresetPhoto;
@@ -150,7 +150,6 @@ NSMutableDictionary *classColorMap;
     }
 }
 
-#pragma mark - Setup FPS Label
 - (void)setupFPSLabel {
     self.fpsLabel = [[UILabel alloc] initWithFrame:CGRectMake(10, 30, 150, 30)];
     self.fpsLabel.backgroundColor = [UIColor colorWithWhite:0 alpha:0.5];
@@ -160,7 +159,6 @@ NSMutableDictionary *classColorMap;
     [self.view addSubview:self.fpsLabel];
 }
 
-#pragma mark - Handle Rotation
 - (void)viewWillLayoutSubviews {
     [super viewWillLayoutSubviews];
     self.previewLayer.frame = [self frameForCurrentOrientation];
@@ -209,15 +207,15 @@ NSMutableDictionary *classColorMap;
     CGRect cropRect = CGRectMake(0, 0, targetSize.width, targetSize.height);
     CIImage *croppedImage = [resizedImage imageByCroppingToRect:cropRect];
 
-    CIContext *context = [CIContext context];
-    CGImageRef cgImage = [context createCGImage:croppedImage fromRect:cropRect];
+    // Use the previously created CIContext
+    CGImageRef cgImage = [self.ciContext createCGImage:croppedImage fromRect:cropRect];
     //UIImage *latestFrame = [UIImage imageWithCGImage:cgImage];
     
     AVCaptureVideoOrientation videoOrientation = self.previewLayer.connection.videoOrientation;
     __weak typeof(self) weak_self = self;
     dispatch_async(dispatch_get_main_queue(), ^{
         NSArray *output = [self.yolo yolo_infer:cgImage withOrientation:videoOrientation];
-        CGImageRelease(cgImage);
+        CGImageRelease(cgImage); // Make sure to release the CGImageRef
         
         [weak_self resetSquares];
         for (int i = 0; i < output.count; i++) {
@@ -233,7 +231,6 @@ NSMutableDictionary *classColorMap;
 }
 
 
-#pragma mark - Update FPS
 - (void)updateFPS {
     CFTimeInterval currentTime = CACurrentMediaTime();
     if (self.lastFrameTime > 0) {
@@ -249,6 +246,4 @@ NSMutableDictionary *classColorMap;
         self.lastFrameTime = currentTime;
     }
 }
-
 @end
-
