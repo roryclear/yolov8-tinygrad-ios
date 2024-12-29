@@ -316,7 +316,6 @@ NSString *output_buffer;
     NSArray *output = [self processOutput:floatArray outputLength:buffer.length / 4 imgWidth:self.yolo_res imgHeight:self.yolo_res];
     NSMutableString *classNamesString = [NSMutableString string];
     for (int i = 0; i < output.count; i++) {
-        //uiImage = drawSquareOnImage(uiImage, [output[i][0] floatValue], [output[i][1] floatValue], [output[i][2] floatValue], [output[i][3] floatValue], [output[i][4] intValue]);
         [classNamesString appendString:self.yolo_classes[[output[i][4] intValue]][0]];
         if (i < output.count - 1) [classNamesString appendString:@", "];
     }
