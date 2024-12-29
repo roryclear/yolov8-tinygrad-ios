@@ -98,6 +98,17 @@ NSMutableDictionary *classColorMap;
     CGFloat scaledWidth = (bottomRightX - xOrigin) * (aspectRatio * minDimension / self.yolo.yolo_res);
     CGFloat scaledHeight = (bottomRightY - yOrigin) * (minDimension / height);
     UIColor *color = self.yolo.yolo_classes[classIndex][1];
+    
+    
+    if(self.view.bounds.size.width < self.view.bounds.size.height){
+        NSLog(@"portrait? %f %f",xOrigin,yOrigin);
+        scaledYOrigin = (self.view.bounds.size.height / 2) - (self.view.bounds.size.width * aspectRatio / 2);
+        scaledYOrigin += (yOrigin / self.yolo.yolo_res) * (self.view.bounds.size.width * aspectRatio);
+        scaledHeight = ((bottomRightY - yOrigin) / self.yolo.yolo_res) * (self.view.bounds.size.width * aspectRatio);
+        scaledXOrigin = (xOrigin / (self.yolo.yolo_res / aspectRatio)) * self.view.bounds.size.width;
+        scaledWidth = self.view.bounds.size.width * (bottomRightX - xOrigin) / (self.yolo.yolo_res / aspectRatio);
+    }
+    
     CAShapeLayer *squareLayer = [CAShapeLayer layer];
     squareLayer.name = @"rectangleLayer";
     squareLayer.strokeColor = color.CGColor;

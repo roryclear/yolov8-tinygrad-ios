@@ -264,7 +264,6 @@ NSString *output_buffer;
     const UInt8 *rawBytes = CFDataGetBytePtr(rawData);
     size_t length = CFDataGetLength(rawData);
     size_t width = CGImageGetWidth(cgImage);
-    NSLog(@"width = %zu",width);
     size_t height = CGImageGetHeight(cgImage);
     size_t rgbLength = (length / 4) * 3;
     UInt8 *rgbData = (UInt8 *)malloc(rgbLength);
@@ -286,9 +285,9 @@ NSString *output_buffer;
         for (size_t i = 0, j = 0; i < length; i += 4, j += 3) {
             int row = i / (width*4);
             int col = (i % (width*4)) / 4;
-            rgbData[col*(width*3) + (row*3)] = rawBytes[i];
-            rgbData[col*(width*3) + (row*3) + 1] = rawBytes[i + 1];
-            rgbData[col*(width*3) + (row*3) + 2] = rawBytes[i + 2];
+            rgbData[col*(width*3) + ((height-1-row)*3)] = rawBytes[i];
+            rgbData[col*(width*3) + ((height-1-row)*3) + 1] = rawBytes[i + 1];
+            rgbData[col*(width*3) + ((height-1-row)*3) + 2] = rawBytes[i + 2];
         }
     }
 
