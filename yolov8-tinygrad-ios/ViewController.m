@@ -3,7 +3,7 @@
 #import <Metal/Metal.h>
 #import "Yolo.h"
 
-@interface ViewController () <AVCaptureVideoDataOutputSampleBufferDelegate>
+@interface ViewController ()
 
 @property (nonatomic, strong) AVCaptureSession *captureSession;
 @property (nonatomic, strong) AVCaptureVideoPreviewLayer *previewLayer;
@@ -78,7 +78,6 @@ NSMutableDictionary *classColorMap;
     }
     [self.captureSession addInput:input];
     
-    // Configure video data output
     AVCaptureVideoDataOutput *output = [[AVCaptureVideoDataOutput alloc] init];
     output.videoSettings = @{(NSString *)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA)};
     output.alwaysDiscardsLateVideoFrames = YES;
@@ -212,7 +211,7 @@ NSMutableDictionary *classColorMap;
 
     CIContext *context = [CIContext context];
     CGImageRef cgImage = [context createCGImage:croppedImage fromRect:cropRect];
-    //self.latestFrame = [UIImage imageWithCGImage:cgImage];
+    //UIImage *latestFrame = [UIImage imageWithCGImage:cgImage];
     
     AVCaptureVideoOrientation videoOrientation = self.previewLayer.connection.videoOrientation;
     __weak typeof(self) weak_self = self;
