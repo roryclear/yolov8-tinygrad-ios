@@ -260,26 +260,38 @@ NSString *output_buffer;
 }
 
 - (NSArray *)yolo_infer:(CGImageRef)cgImage withOrientation:(AVCaptureVideoOrientation)orientation {
-    if (orientation == AVCaptureVideoOrientationLandscapeLeft) NSLog(@"Orientation is Landscape Left");
     CFDataRef rawData = CGDataProviderCopyData(CGImageGetDataProvider(cgImage));
     const UInt8 *rawBytes = CFDataGetBytePtr(rawData);
     size_t length = CFDataGetLength(rawData);
+    size_t width = CGImageGetWidth(cgImage);
+    NSLog(@"width = %zu",width);
+    size_t height = CGImageGetHeight(cgImage);
     size_t rgbLength = (length / 4) * 3;
     UInt8 *rgbData = (UInt8 *)malloc(rgbLength);
-    //RGBA to RGB
-    if (orientation == AVCaptureVideoOrientationLandscapeRight){
+    
+    // RGBA to RGB
+    if (orientation == AVCaptureVideoOrientationLandscapeRight) {
         for (size_t i = 0, j = 0; i < length; i += 4, j += 3) {
             rgbData[j] = rawBytes[i];
             rgbData[j + 1] = rawBytes[i + 1];
             rgbData[j + 2] = rawBytes[i + 2];
         }
-    } else {
+    } else if (orientation == AVCaptureVideoOrientationLandscapeLeft) {
         for (size_t i = 0, j = 0; i < length; i += 4, j += 3) {
             rgbData[rgbLength - 1 - j - 2] = rawBytes[i];
             rgbData[rgbLength - 1 - j - 1] = rawBytes[i + 1];
             rgbData[rgbLength - 1 - j] = rawBytes[i + 2];
         }
+    } else if (orientation == AVCaptureVideoOrientationPortrait) {
+        for (size_t i = 0, j = 0; i < length; i += 4, j += 3) {
+            int row = i / (width*4);
+            int col = (i % (width*4)) / 4;
+            rgbData[col*(width*3) + (row*3)] = rawBytes[i];
+            rgbData[col*(width*3) + (row*3) + 1] = rawBytes[i + 1];
+            rgbData[col*(width*3) + (row*3) + 2] = rawBytes[i + 2];
+        }
     }
+
     id<MTLBuffer> buffer = self.buffers[self.input_buffer];
     memset(buffer.contents, 0, buffer.length);
     memcpy(buffer.contents, rgbData, rgbLength);

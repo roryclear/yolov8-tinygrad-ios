@@ -190,6 +190,8 @@ NSMutableDictionary *classColorMap;
 }
 
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
+    AVCaptureVideoOrientation videoOrientation = self.previewLayer.connection.videoOrientation;
+    
     CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
     CIImage *ciImage = [CIImage imageWithCVPixelBuffer:imageBuffer];
     size_t width = CVPixelBufferGetWidth(imageBuffer);
@@ -207,16 +209,12 @@ NSMutableDictionary *classColorMap;
     CGRect cropRect = CGRectMake(0, 0, targetSize.width, targetSize.height);
     CIImage *croppedImage = [resizedImage imageByCroppingToRect:cropRect];
 
-    // Use the previously created CIContext
     CGImageRef cgImage = [self.ciContext createCGImage:croppedImage fromRect:cropRect];
-    //UIImage *latestFrame = [UIImage imageWithCGImage:cgImage];
     
-    AVCaptureVideoOrientation videoOrientation = self.previewLayer.connection.videoOrientation;
     __weak typeof(self) weak_self = self;
     dispatch_async(dispatch_get_main_queue(), ^{
         NSArray *output = [self.yolo yolo_infer:cgImage withOrientation:videoOrientation];
-        CGImageRelease(cgImage); // Make sure to release the CGImageRef
-        
+        CGImageRelease(cgImage);
         [weak_self resetSquares];
         for (int i = 0; i < output.count; i++) {
             [weak_self drawSquareWithTopLeftX:[output[i][0] floatValue]
