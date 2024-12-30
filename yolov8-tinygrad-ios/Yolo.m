@@ -282,7 +282,7 @@ NSString *output_buffer;
             rgbData[rgbLength - 1 - j] = rawBytes[i + 2];
         }
     } else if (orientation == AVCaptureVideoOrientationPortrait) {
-        for (size_t i = 0, j = 0; i < length; i += 4, j += 3) {
+        for (size_t i = 0; i < length; i += 4) {
             int row = i / (width*4);
             int col = (i % (width*4)) / 4;
             rgbData[col*(width*3) + ((height-1-row)*3)] = rawBytes[i];
