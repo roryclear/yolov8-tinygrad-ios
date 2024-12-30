@@ -90,24 +90,23 @@ NSMutableDictionary *classColorMap;
 }
 
 - (void)drawSquareWithTopLeftX:(CGFloat)xOrigin topLeftY:(CGFloat)yOrigin bottomRightX:(CGFloat)bottomRightX bottomRightY:(CGFloat)bottomRightY classIndex:(int)classIndex aspectRatio:(float)aspectRatio {
-    CGFloat minDimension = MIN(self.view.bounds.size.width, self.view.bounds.size.height);
-    CGFloat height = self.yolo.yolo_res / aspectRatio;
-    CGFloat leftEdgeX = (self.view.bounds.size.width - (minDimension * aspectRatio)) / 2;
-    CGFloat scaledXOrigin = leftEdgeX + (xOrigin * aspectRatio / self.yolo.yolo_res) * minDimension;
-    CGFloat scaledYOrigin = (yOrigin / height) * minDimension;
-    CGFloat scaledWidth = (bottomRightX - xOrigin) * (aspectRatio * minDimension / self.yolo.yolo_res);
-    CGFloat scaledHeight = (bottomRightY - yOrigin) * (minDimension / height);
-    UIColor *color = self.yolo.yolo_classes[classIndex][1];
-    
-    
-    if(self.view.bounds.size.width < self.view.bounds.size.height){
+    CGFloat leftEdgeX = (self.view.bounds.size.width - (self.view.bounds.size.height * aspectRatio)) / 2;
+    CGFloat scaledXOrigin, scaledYOrigin, scaledWidth, scaledHeight;
+
+    if (self.view.bounds.size.width < self.view.bounds.size.height) { //portrait
         scaledYOrigin = (self.view.bounds.size.height / 2) - (self.view.bounds.size.width * aspectRatio / 2);
         scaledYOrigin += (yOrigin / self.yolo.yolo_res) * (self.view.bounds.size.width * aspectRatio);
         scaledHeight = ((bottomRightY - yOrigin) / self.yolo.yolo_res) * (self.view.bounds.size.width * aspectRatio);
         scaledXOrigin = (xOrigin / (self.yolo.yolo_res / aspectRatio)) * self.view.bounds.size.width;
         scaledWidth = self.view.bounds.size.width * (bottomRightX - xOrigin) / (self.yolo.yolo_res / aspectRatio);
+    } else {
+        scaledXOrigin = leftEdgeX + (xOrigin * aspectRatio / self.yolo.yolo_res) * self.view.bounds.size.height;
+        scaledYOrigin = (aspectRatio * yOrigin / self.yolo.yolo_res) * self.view.bounds.size.height;
+        scaledWidth = (bottomRightX - xOrigin) * (aspectRatio * self.view.bounds.size.height / self.yolo.yolo_res);
+        scaledHeight = (bottomRightY - yOrigin) * (aspectRatio * self.view.bounds.size.height / self.yolo.yolo_res);
     }
-    
+
+    UIColor *color = self.yolo.yolo_classes[classIndex][1];
     CAShapeLayer *squareLayer = [CAShapeLayer layer];
     squareLayer.name = @"rectangleLayer";
     squareLayer.strokeColor = color.CGColor;
