@@ -266,7 +266,7 @@ NSString *output_buffer;
     size_t width = CGImageGetWidth(cgImage);
     size_t height = CGImageGetHeight(cgImage);
     size_t rgbLength = (length / 4) * 3;
-    UInt8 *rgbData = (UInt8 *)malloc(length);
+    UInt8 *rgbData = (UInt8 *)malloc(width * width * 3);
     
     // RGBA to RGB
     if (orientation == AVCaptureVideoOrientationLandscapeRight) {
@@ -289,11 +289,12 @@ NSString *output_buffer;
             rgbData[col*(width*3) + ((height-1-row)*3) + 1] = rawBytes[i + 1];
             rgbData[col*(width*3) + ((height-1-row)*3) + 2] = rawBytes[i + 2];
         }
+        length = width * width * 3;
     }
 
     id<MTLBuffer> buffer = self.buffers[self.input_buffer];
     memset(buffer.contents, 0, buffer.length);
-    memcpy(buffer.contents, rgbData, length);
+    memcpy(buffer.contents, rgbData, buffer.length);
     free(rgbData);
     CFRelease(rawData);
     
