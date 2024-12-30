@@ -101,7 +101,6 @@ NSMutableDictionary *classColorMap;
     
     
     if(self.view.bounds.size.width < self.view.bounds.size.height){
-        NSLog(@"portrait? %f %f",xOrigin,yOrigin);
         scaledYOrigin = (self.view.bounds.size.height / 2) - (self.view.bounds.size.width * aspectRatio / 2);
         scaledYOrigin += (yOrigin / self.yolo.yolo_res) * (self.view.bounds.size.width * aspectRatio);
         scaledHeight = ((bottomRightY - yOrigin) / self.yolo.yolo_res) * (self.view.bounds.size.width * aspectRatio);
