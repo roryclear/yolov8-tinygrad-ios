@@ -13,6 +13,14 @@
 @property (nonatomic, strong) Yolo *yolo;
 @property (nonatomic, strong) CIContext *ciContext;
 
+@property (atomic, assign) BOOL isProcessing;
+@property (nonatomic, assign) BOOL isRecording;
+@property (nonatomic, assign) CMTime startTime;
+@property (nonatomic, assign) CMTime currentTime;
+@property (nonatomic, strong) AVAssetWriter *assetWriter;
+@property (nonatomic, strong) AVAssetWriterInput *videoWriterInput;
+@property (nonatomic, strong) AVAssetWriterInputPixelBufferAdaptor *adaptor;
+
 @end
 
 @implementation ViewController
@@ -87,6 +95,55 @@ NSMutableDictionary *classColorMap;
     self.previewLayer.videoGravity = AVLayerVideoGravityResizeAspect;
     [self.view.layer addSublayer:self.previewLayer];
     [self.captureSession startRunning];
+    [self startNewRecording];
+}
+
+- (void)startNewRecording {
+    NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+    [formatter setDateFormat:@"yyyy-MM-dd_HH:mm:ss"];
+    NSString *timestamp = [formatter stringFromDate:[NSDate date]];
+
+    NSURL *documentsDirectory = [[[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask] firstObject];
+    NSURL *outputURL = [documentsDirectory URLByAppendingPathComponent:[NSString stringWithFormat:@"output_%@.mov", timestamp]];
+
+    NSError *error = nil;
+    self.assetWriter = [AVAssetWriter assetWriterWithURL:outputURL fileType:AVFileTypeQuickTimeMovie error:&error];
+    if (error) {
+        NSLog(@"Error creating asset writer: %@", error.localizedDescription);
+        return;
+    }
+
+    NSDictionary *videoSettings = @{
+        AVVideoCodecKey: AVVideoCodecTypeH264,
+        AVVideoWidthKey: @1280,
+        AVVideoHeightKey: @960,
+        AVVideoScalingModeKey: AVVideoScalingModeResizeAspectFill
+    };
+    self.videoWriterInput = [AVAssetWriterInput assetWriterInputWithMediaType:AVMediaTypeVideo outputSettings:videoSettings];
+    self.videoWriterInput.expectsMediaDataInRealTime = YES;
+
+    NSDictionary *sourcePixelBufferAttributes = @{
+        (NSString *)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA),
+        (NSString *)kCVPixelBufferWidthKey: @1280,
+        (NSString *)kCVPixelBufferHeightKey: @960
+    };
+    self.adaptor = [AVAssetWriterInputPixelBufferAdaptor assetWriterInputPixelBufferAdaptorWithAssetWriterInput:self.videoWriterInput sourcePixelBufferAttributes:sourcePixelBufferAttributes];
+
+    if ([self.assetWriter canAddInput:self.videoWriterInput]) {
+        [self.assetWriter addInput:self.videoWriterInput];
+    } else {
+        NSLog(@"Cannot add video writer input");
+        return;
+    }
+
+    self.startTime = kCMTimeInvalid;
+    self.currentTime = kCMTimeZero;
+    self.isRecording = YES;
+
+    [self.assetWriter startWriting];
+    [self.assetWriter startSessionAtSourceTime:kCMTimeZero];
+
+    NSLog(@"Started new recording");
 }
 
 - (void)drawSquareWithTopLeftX:(CGFloat)xOrigin topLeftY:(CGFloat)yOrigin bottomRightX:(CGFloat)bottomRightX bottomRightY:(CGFloat)bottomRightY classIndex:(int)classIndex aspectRatio:(float)aspectRatio {
@@ -198,44 +255,103 @@ NSMutableDictionary *classColorMap;
     return resizedImage.CGImage;
 }
 
+- (void)finishRecording {
+    if (self.isRecording && self.assetWriter.status == AVAssetWriterStatusWriting) {
+        self.isRecording = NO;
+        [self.videoWriterInput markAsFinished];
+        [self.assetWriter finishWritingWithCompletionHandler:^{
+            NSLog(@"Finished recording and saving file");
+            [self startNewRecording];
+        }];
+    } else {
+        NSLog(@"Cannot finish writing. Asset writer status: %ld", (long)self.assetWriter.status);
+    }
+}
+
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
-    AVCaptureVideoOrientation videoOrientation = self.previewLayer.connection.videoOrientation;
+    // Log timestamp immediately
+    NSLog(@"Timestamp: %@", [NSDate date]);
     
+    if (self.isRecording && self.assetWriter.status == AVAssetWriterStatusWriting) {
+        CMTime timestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
+        if (CMTIME_IS_INVALID(self.startTime)) {
+            self.startTime = timestamp;
+            self.currentTime = kCMTimeZero;
+        } else {
+            self.currentTime = CMTimeSubtract(timestamp, self.startTime);
+        }
+
+        if (self.videoWriterInput.readyForMoreMediaData) {
+            CVPixelBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+            if (![self.adaptor appendPixelBuffer:pixelBuffer withPresentationTime:self.currentTime]) {
+                NSLog(@"Error appending pixel buffer: %@", self.assetWriter.error);
+            }
+        }
+
+        NSTimeInterval elapsedTime = CMTimeGetSeconds(self.currentTime);
+        if (elapsedTime >= 60.0) { // 60 seconds
+            [self finishRecording];
+        }
+    }
+
+    // Get video orientation and image buffer
+    AVCaptureVideoOrientation videoOrientation = self.previewLayer.connection.videoOrientation;
     CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
     CIImage *ciImage = [CIImage imageWithCVPixelBuffer:imageBuffer];
-    size_t width = CVPixelBufferGetWidth(imageBuffer);
-    size_t height = CVPixelBufferGetHeight(imageBuffer);
-    
-    CGFloat aspect_ratio = (CGFloat)width / (CGFloat)height;
-    CGFloat targetWidth = self.yolo.yolo_res;
-    CGFloat aspectRatio = (CGFloat)width / (CGFloat)height;
-    CGSize targetSize = CGSizeMake(targetWidth, targetWidth / aspectRatio);
 
-    CGFloat scaleX = targetSize.width / width;
-    CGFloat scaleY = targetSize.height / height;
-    CIImage *resizedImage = [ciImage imageByApplyingTransform:CGAffineTransformMakeScale(scaleX, scaleY)];
+    // If YOLO inference is still processing, return early
+    if (self.isProcessing) {
+        return;
+    }
 
-    CGRect cropRect = CGRectMake(0, 0, targetSize.width, targetSize.height);
-    CIImage *croppedImage = [resizedImage imageByCroppingToRect:cropRect];
+    // Mark processing flag
+    self.isProcessing = YES;
 
-    CGImageRef cgImage = [self.ciContext createCGImage:croppedImage fromRect:cropRect];
-    
-    __weak typeof(self) weak_self = self;
-    dispatch_async(dispatch_get_main_queue(), ^{
+    // Perform YOLO inference on a background thread
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
+        size_t width = CVPixelBufferGetWidth(imageBuffer);
+        size_t height = CVPixelBufferGetHeight(imageBuffer);
+        CGFloat aspect_ratio = (CGFloat)width / (CGFloat)height;
+        CGFloat targetWidth = self.yolo.yolo_res;
+        CGFloat aspectRatio = (CGFloat)width / (CGFloat)height;
+        CGSize targetSize = CGSizeMake(targetWidth, targetWidth / aspectRatio);
+
+        // Resize the image
+        CGFloat scaleX = targetSize.width / width;
+        CGFloat scaleY = targetSize.height / height;
+        CIImage *resizedImage = [ciImage imageByApplyingTransform:CGAffineTransformMakeScale(scaleX, scaleY)];
+        
+        // Crop the image
+        CGRect cropRect = CGRectMake(0, 0, targetSize.width, targetSize.height);
+        CIImage *croppedImage = [resizedImage imageByCroppingToRect:cropRect];
+        
+        // Convert to CGImage
+        CGImageRef cgImage = [self.ciContext createCGImage:croppedImage fromRect:cropRect];
+        
+        // Perform YOLO inference
         NSArray *output = [self.yolo yolo_infer:cgImage withOrientation:videoOrientation];
         CGImageRelease(cgImage);
-        [weak_self resetSquares];
-        for (int i = 0; i < output.count; i++) {
-            [weak_self drawSquareWithTopLeftX:[output[i][0] floatValue]
-                                topLeftY:[output[i][1] floatValue]
-                            bottomRightX:[output[i][2] floatValue]
-                            bottomRightY:[output[i][3] floatValue]
-                              classIndex:[output[i][4] intValue]
-                             aspectRatio:aspect_ratio];
-        }
-        [weak_self updateFPS];
+        
+        // Update the UI on the main thread
+        __weak typeof(self) weak_self = self;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [weak_self resetSquares];
+            for (int i = 0; i < output.count; i++) {
+                [weak_self drawSquareWithTopLeftX:[output[i][0] floatValue]
+                                          topLeftY:[output[i][1] floatValue]
+                                      bottomRightX:[output[i][2] floatValue]
+                                      bottomRightY:[output[i][3] floatValue]
+                                        classIndex:[output[i][4] intValue]
+                                       aspectRatio:aspect_ratio];
+            }
+            [weak_self updateFPS];
+            
+            // Reset the processing flag
+            weak_self.isProcessing = NO;
+        });
     });
 }
+
 
 
 - (void)updateFPS {
@@ -254,3 +370,4 @@ NSMutableDictionary *classColorMap;
     }
 }
 @end
+

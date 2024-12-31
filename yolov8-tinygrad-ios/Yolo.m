@@ -326,12 +326,30 @@ NSString *output_buffer;
     float *floatArray = malloc(buffer.length);
     memcpy(floatArray, bufferPointer, buffer.length);
     NSArray *output = [self processOutput:floatArray outputLength:buffer.length / 4 imgWidth:self.yolo_res imgHeight:self.yolo_res];
+
     NSMutableString *classNamesString = [NSMutableString string];
     for (int i = 0; i < output.count; i++) {
         [classNamesString appendString:self.yolo_classes[[output[i][4] intValue]][0]];
         if (i < output.count - 1) [classNamesString appendString:@", "];
     }
     NSLog(@"Class Names: %@", classNamesString);
+
+    // Get the current timestamp
+    NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
+    [dateFormatter setDateFormat:@"yyyy-MM-dd HH:mm:ss"];
+    NSString *currentTimestamp = [dateFormatter stringFromDate:[NSDate date]];
+
+    // Log entry with timestamp
+    NSString *logEntry = [NSString stringWithFormat:@"%@ - Class Names: %@", currentTimestamp, classNamesString];
+    NSLog(@"%@", logEntry);
+
+    // Append log entry to file
+    NSString *filePath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES)[0] stringByAppendingPathComponent:@"logs.txt"];
+    NSFileHandle *fileHandle = [NSFileHandle fileHandleForWritingAtPath:filePath] ?: [NSFileHandle fileHandleForWritingAtPath:([[NSFileManager defaultManager] createFileAtPath:filePath contents:nil attributes:nil], filePath)];
+    [fileHandle seekToEndOfFile];
+    [fileHandle writeData:[[logEntry stringByAppendingString:@"\n"] dataUsingEncoding:NSUTF8StringEncoding]];
+    [fileHandle closeFile];
+
     free(floatArray);
     return output;
 }
