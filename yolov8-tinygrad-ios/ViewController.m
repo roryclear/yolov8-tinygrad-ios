@@ -99,13 +99,15 @@ NSMutableDictionary *classColorMap;
 }
 
 - (void)startNewRecording {
+    // Generate a unique file path
     NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
-    [formatter setDateFormat:@"yyyy-MM-dd_HH:mm:ss"];
+    [formatter setDateFormat:@"yyyy-MM-dd_HH-mm-ss"];
     NSString *timestamp = [formatter stringFromDate:[NSDate date]];
-
+    
     NSURL *documentsDirectory = [[[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask] firstObject];
     NSURL *outputURL = [documentsDirectory URLByAppendingPathComponent:[NSString stringWithFormat:@"output_%@.mov", timestamp]];
 
+    // Setup asset writer
     NSError *error = nil;
     self.assetWriter = [AVAssetWriter assetWriterWithURL:outputURL fileType:AVFileTypeQuickTimeMovie error:&error];
     if (error) {
@@ -113,10 +115,11 @@ NSMutableDictionary *classColorMap;
         return;
     }
 
+    // 1280x960?
     NSDictionary *videoSettings = @{
         AVVideoCodecKey: AVVideoCodecTypeH264,
-        AVVideoWidthKey: @1280,
-        AVVideoHeightKey: @960,
+        AVVideoWidthKey: @640,
+        AVVideoHeightKey: @480,
         AVVideoScalingModeKey: AVVideoScalingModeResizeAspectFill
     };
     self.videoWriterInput = [AVAssetWriterInput assetWriterInputWithMediaType:AVMediaTypeVideo outputSettings:videoSettings];
@@ -124,8 +127,8 @@ NSMutableDictionary *classColorMap;
 
     NSDictionary *sourcePixelBufferAttributes = @{
         (NSString *)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA),
-        (NSString *)kCVPixelBufferWidthKey: @1280,
-        (NSString *)kCVPixelBufferHeightKey: @960
+        (NSString *)kCVPixelBufferWidthKey: @640,
+        (NSString *)kCVPixelBufferHeightKey: @480
     };
     self.adaptor = [AVAssetWriterInputPixelBufferAdaptor assetWriterInputPixelBufferAdaptorWithAssetWriterInput:self.videoWriterInput sourcePixelBufferAttributes:sourcePixelBufferAttributes];
 
@@ -140,10 +143,13 @@ NSMutableDictionary *classColorMap;
     self.currentTime = kCMTimeZero;
     self.isRecording = YES;
 
-    [self.assetWriter startWriting];
-    [self.assetWriter startSessionAtSourceTime:kCMTimeZero];
-
-    NSLog(@"Started new recording");
+    if ([self.assetWriter startWriting]) {
+        [self.assetWriter startSessionAtSourceTime:kCMTimeZero];
+        NSLog(@"Started new recording segment: %@", outputURL.path);
+    } else {
+        NSLog(@"Failed to start writing: %@", self.assetWriter.error.localizedDescription);
+        self.isRecording = NO;
+    }
 }
 
 - (void)drawSquareWithTopLeftX:(CGFloat)xOrigin topLeftY:(CGFloat)yOrigin bottomRightX:(CGFloat)bottomRightX bottomRightY:(CGFloat)bottomRightY classIndex:(int)classIndex aspectRatio:(float)aspectRatio {
@@ -259,19 +265,31 @@ NSMutableDictionary *classColorMap;
     if (self.isRecording && self.assetWriter.status == AVAssetWriterStatusWriting) {
         self.isRecording = NO;
         [self.videoWriterInput markAsFinished];
+        
         [self.assetWriter finishWritingWithCompletionHandler:^{
-            NSLog(@"Finished recording and saving file");
-            [self startNewRecording];
+            if (self.assetWriter.status == AVAssetWriterStatusCompleted) {
+                NSLog(@"Successfully finished recording segment");
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [self startNewRecording];
+                });
+            } else {
+                NSLog(@"Failed to finish recording: %@", self.assetWriter.error.localizedDescription);
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [self startNewRecording];
+                });
+            }
         }];
     } else {
-        NSLog(@"Cannot finish writing. Asset writer status: %ld", (long)self.assetWriter.status);
+        NSLog(@"Cannot finish recording. Asset writer status: %ld", (long)self.assetWriter.status);
+        if (self.assetWriter.status != AVAssetWriterStatusWriting) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self startNewRecording];
+            });
+        }
     }
 }
 
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
-    // Log timestamp immediately
-    NSLog(@"Timestamp: %@", [NSDate date]);
-    
     if (self.isRecording && self.assetWriter.status == AVAssetWriterStatusWriting) {
         CMTime timestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
         if (CMTIME_IS_INVALID(self.startTime)) {
@@ -283,31 +301,39 @@ NSMutableDictionary *classColorMap;
 
         if (self.videoWriterInput.readyForMoreMediaData) {
             CVPixelBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
-            if (![self.adaptor appendPixelBuffer:pixelBuffer withPresentationTime:self.currentTime]) {
-                NSLog(@"Error appending pixel buffer: %@", self.assetWriter.error);
+            
+            BOOL success = NO;
+            int retryCount = 3; //TODO, will this stop the crash?
+            while (!success && retryCount > 0) {
+                success = [self.adaptor appendPixelBuffer:pixelBuffer withPresentationTime:self.currentTime];
+                if (!success) {
+                    NSLog(@"Error appending pixel buffer (remaining retries: %d): %@", retryCount - 1, self.assetWriter.error.localizedDescription);
+                    retryCount--;
+                    [NSThread sleepForTimeInterval:0.01];
+                }
+            }
+
+            if (!success) {
+                NSLog(@"Failed to append pixel buffer after retries: %@", self.assetWriter.error);
             }
         }
 
         NSTimeInterval elapsedTime = CMTimeGetSeconds(self.currentTime);
-        if (elapsedTime >= 60.0) { // 60 seconds
+        if (elapsedTime >= 60.0) {
             [self finishRecording];
         }
     }
 
-    // Get video orientation and image buffer
     AVCaptureVideoOrientation videoOrientation = self.previewLayer.connection.videoOrientation;
     CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
     CIImage *ciImage = [CIImage imageWithCVPixelBuffer:imageBuffer];
 
-    // If YOLO inference is still processing, return early
     if (self.isProcessing) {
         return;
     }
 
-    // Mark processing flag
     self.isProcessing = YES;
 
-    // Perform YOLO inference on a background thread
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
         size_t width = CVPixelBufferGetWidth(imageBuffer);
         size_t height = CVPixelBufferGetHeight(imageBuffer);
@@ -316,19 +342,15 @@ NSMutableDictionary *classColorMap;
         CGFloat aspectRatio = (CGFloat)width / (CGFloat)height;
         CGSize targetSize = CGSizeMake(targetWidth, targetWidth / aspectRatio);
 
-        // Resize the image
         CGFloat scaleX = targetSize.width / width;
         CGFloat scaleY = targetSize.height / height;
         CIImage *resizedImage = [ciImage imageByApplyingTransform:CGAffineTransformMakeScale(scaleX, scaleY)];
         
-        // Crop the image
         CGRect cropRect = CGRectMake(0, 0, targetSize.width, targetSize.height);
         CIImage *croppedImage = [resizedImage imageByCroppingToRect:cropRect];
         
-        // Convert to CGImage
         CGImageRef cgImage = [self.ciContext createCGImage:croppedImage fromRect:cropRect];
         
-        // Perform YOLO inference
         NSArray *output = [self.yolo yolo_infer:cgImage withOrientation:videoOrientation];
         CGImageRelease(cgImage);
         
@@ -351,8 +373,6 @@ NSMutableDictionary *classColorMap;
         });
     });
 }
-
-
 
 - (void)updateFPS {
     CFTimeInterval currentTime = CACurrentMediaTime();
