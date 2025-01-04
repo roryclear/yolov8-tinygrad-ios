@@ -99,15 +99,13 @@ NSMutableDictionary *classColorMap;
 }
 
 - (void)startNewRecording {
-    // Generate a unique file path
     NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
-    [formatter setDateFormat:@"yyyy-MM-dd_HH-mm-ss"];
+    [formatter setDateFormat:@"yyyy-MM-dd_HH:mm:ss"];
     NSString *timestamp = [formatter stringFromDate:[NSDate date]];
-    
+
     NSURL *documentsDirectory = [[[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask] firstObject];
     NSURL *outputURL = [documentsDirectory URLByAppendingPathComponent:[NSString stringWithFormat:@"output_%@.mov", timestamp]];
 
-    // Setup asset writer
     NSError *error = nil;
     self.assetWriter = [AVAssetWriter assetWriterWithURL:outputURL fileType:AVFileTypeQuickTimeMovie error:&error];
     if (error) {
@@ -115,7 +113,6 @@ NSMutableDictionary *classColorMap;
         return;
     }
 
-    // 1280x960?
     NSDictionary *videoSettings = @{
         AVVideoCodecKey: AVVideoCodecTypeH264,
         AVVideoWidthKey: @640,
@@ -143,13 +140,10 @@ NSMutableDictionary *classColorMap;
     self.currentTime = kCMTimeZero;
     self.isRecording = YES;
 
-    if ([self.assetWriter startWriting]) {
-        [self.assetWriter startSessionAtSourceTime:kCMTimeZero];
-        NSLog(@"Started new recording segment: %@", outputURL.path);
-    } else {
-        NSLog(@"Failed to start writing: %@", self.assetWriter.error.localizedDescription);
-        self.isRecording = NO;
-    }
+    [self.assetWriter startWriting];
+    [self.assetWriter startSessionAtSourceTime:kCMTimeZero];
+
+    NSLog(@"Started new recording");
 }
 
 - (void)drawSquareWithTopLeftX:(CGFloat)xOrigin topLeftY:(CGFloat)yOrigin bottomRightX:(CGFloat)bottomRightX bottomRightY:(CGFloat)bottomRightY classIndex:(int)classIndex aspectRatio:(float)aspectRatio {
@@ -265,27 +259,12 @@ NSMutableDictionary *classColorMap;
     if (self.isRecording && self.assetWriter.status == AVAssetWriterStatusWriting) {
         self.isRecording = NO;
         [self.videoWriterInput markAsFinished];
-        
         [self.assetWriter finishWritingWithCompletionHandler:^{
-            if (self.assetWriter.status == AVAssetWriterStatusCompleted) {
-                NSLog(@"Successfully finished recording segment");
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    [self startNewRecording];
-                });
-            } else {
-                NSLog(@"Failed to finish recording: %@", self.assetWriter.error.localizedDescription);
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    [self startNewRecording];
-                });
-            }
+            NSLog(@"Finished recording and saving file");
+            [self startNewRecording];
         }];
     } else {
-        NSLog(@"Cannot finish recording. Asset writer status: %ld", (long)self.assetWriter.status);
-        if (self.assetWriter.status != AVAssetWriterStatusWriting) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                [self startNewRecording];
-            });
-        }
+        NSLog(@"Cannot finish writing. Asset writer status: %ld", (long)self.assetWriter.status);
     }
 }
 
@@ -312,12 +291,7 @@ NSMutableDictionary *classColorMap;
                     [NSThread sleepForTimeInterval:0.01];
                 }
             }
-
-            if (!success) {
-                NSLog(@"Failed to append pixel buffer after retries: %@", self.assetWriter.error);
-            }
         }
-
         NSTimeInterval elapsedTime = CMTimeGetSeconds(self.currentTime);
         if (elapsedTime >= 60.0) {
             [self finishRecording];
@@ -354,7 +328,6 @@ NSMutableDictionary *classColorMap;
         NSArray *output = [self.yolo yolo_infer:cgImage withOrientation:videoOrientation];
         CGImageRelease(cgImage);
         
-        // Update the UI on the main thread
         __weak typeof(self) weak_self = self;
         dispatch_async(dispatch_get_main_queue(), ^{
             [weak_self resetSquares];
@@ -367,8 +340,6 @@ NSMutableDictionary *classColorMap;
                                        aspectRatio:aspect_ratio];
             }
             [weak_self updateFPS];
-            
-            // Reset the processing flag
             weak_self.isProcessing = NO;
         });
     });
@@ -390,4 +361,5 @@ NSMutableDictionary *classColorMap;
     }
 }
 @end
+
 

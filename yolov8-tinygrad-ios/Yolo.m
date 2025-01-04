@@ -261,24 +261,14 @@ NSString *output_buffer;
 
 - (NSArray *)yolo_infer:(CGImageRef)cgImage withOrientation:(AVCaptureVideoOrientation)orientation {
     CFDataRef rawData = CGDataProviderCopyData(CGImageGetDataProvider(cgImage));
-    if (!rawData) {
-        NSLog(@"Failed to get raw image data");
-        return nil;
-    }
-
     const UInt8 *rawBytes = CFDataGetBytePtr(rawData);
     size_t length = CFDataGetLength(rawData);
     size_t width = CGImageGetWidth(cgImage);
     size_t height = CGImageGetHeight(cgImage);
     size_t rgbLength = (length / 4) * 3;
-
     UInt8 *rgbData = (UInt8 *)malloc(width * width * 3);
-    if (!rgbData) {
-        CFRelease(rawData);
-        NSLog(@"Memory allocation failed for rgbData");
-        return nil;
-    }
-
+    
+    // RGBA to RGB
     if (orientation == AVCaptureVideoOrientationLandscapeRight) {
         for (size_t i = 0, j = 0; i < length; i += 4, j += 3) {
             rgbData[j] = rawBytes[i];
@@ -292,86 +282,57 @@ NSString *output_buffer;
             rgbData[rgbLength - 1 - j] = rawBytes[i + 2];
         }
     } else if (orientation == AVCaptureVideoOrientationPortrait) {
-        for (size_t i = 0; i < length; i += 4) {
-            int row = i / (width * 4);
-            int col = (i % (width * 4)) / 4;
-            rgbData[col * (width * 3) + ((height - 1 - row) * 3)] = rawBytes[i];
-            rgbData[col * (width * 3) + ((height - 1 - row) * 3) + 1] = rawBytes[i + 1];
-            rgbData[col * (width * 3) + ((height - 1 - row) * 3) + 2] = rawBytes[i + 2];
+        for (int i = 0; i < length; i += 4) {
+            int row = i / (width*4);
+            int col = (i % (width*4)) / 4;
+            rgbData[col*(width*3) + ((height-1-row)*3)] = rawBytes[i];
+            rgbData[col*(width*3) + ((height-1-row)*3) + 1] = rawBytes[i + 1];
+            rgbData[col*(width*3) + ((height-1-row)*3) + 2] = rawBytes[i + 2];
         }
+        length = width * width * 3;
     }
-
-    CFRelease(rawData);
 
     id<MTLBuffer> buffer = self.buffers[self.input_buffer];
-    if (!buffer || !buffer.contents) {
-        free(rgbData);
-        NSLog(@"Metal buffer is not initialized or invalid");
-        return nil;
-    }
-
     memset(buffer.contents, 0, buffer.length);
-    memcpy(buffer.contents, rgbData, MIN(buffer.length, width * width * 3));
+    memcpy(buffer.contents, rgbData, buffer.length);
     free(rgbData);
-
+    CFRelease(rawData);
+    
     for (NSMutableDictionary *values in self._q) {
-        id<MTLCommandBuffer> commandBuffer = [self.mtl_queue commandBuffer];
-        if (!commandBuffer) {
-            NSLog(@"Failed to create Metal command buffer");
-            continue;
-        }
-
-        id<MTLComputeCommandEncoder> encoder = [commandBuffer computeCommandEncoder];
-        if (!encoder) {
-            NSLog(@"Failed to create compute command encoder");
-            continue;
-        }
-
-        [encoder setComputePipelineState:self.pipeline_states[@[values[@"name"][0], values[@"datahash"][0]]]];
-        for (int i = 0; i < [(NSArray *)values[@"bufs"] count]; i++) {
+        id<MTLCommandBuffer> command_buffer = [self.mtl_queue commandBuffer];
+        id<MTLComputeCommandEncoder> encoder = [command_buffer computeCommandEncoder];
+        [encoder setComputePipelineState:self.pipeline_states[@[values[@"name"][0],values[@"datahash"][0]]]];
+        for(int i = 0; i < [(NSArray *)values[@"bufs"] count]; i++){
             [encoder setBuffer:self.buffers[values[@"bufs"][i]] offset:0 atIndex:i];
         }
         for (int i = 0; i < [(NSArray *)values[@"vals"] count]; i++) {
             NSInteger value = [values[@"vals"][i] integerValue];
             [encoder setBytes:&value length:sizeof(NSInteger) atIndex:i + [(NSArray *)values[@"bufs"] count]];
         }
-
-        MTLSize globalSize = MTLSizeMake([values[@"global_sizes"][0] intValue], [values[@"global_sizes"][1] intValue], [values[@"global_sizes"][2] intValue]);
-        MTLSize localSize = MTLSizeMake([values[@"local_sizes"][0] intValue], [values[@"local_sizes"][1] intValue], [values[@"local_sizes"][2] intValue]);
-        [encoder dispatchThreadgroups:globalSize threadsPerThreadgroup:localSize];
+        MTLSize global_size = MTLSizeMake([values[@"global_sizes"][0] intValue], [values[@"global_sizes"][1] intValue], [values[@"global_sizes"][2] intValue]);
+        MTLSize local_size = MTLSizeMake([values[@"local_sizes"][0] intValue], [values[@"local_sizes"][1] intValue], [values[@"local_sizes"][2] intValue]);
+        [encoder dispatchThreadgroups:global_size threadsPerThreadgroup:local_size];
         [encoder endEncoding];
-        [commandBuffer commit];
-        [self.mtl_buffers_in_flight addObject:commandBuffer];
+        [command_buffer commit];
+        [self.mtl_buffers_in_flight addObject: command_buffer];
     }
 
-    for (int i = 0; i < self.mtl_buffers_in_flight.count; i++) {
+    for(int i = 0; i < self.mtl_buffers_in_flight.count; i++){
         [self.mtl_buffers_in_flight[i] waitUntilCompleted];
     }
     [self.mtl_buffers_in_flight removeAllObjects];
-
     buffer = self.buffers[self.output_buffer];
-    if (!buffer || !buffer.contents) {
-        NSLog(@"Output buffer is invalid");
-        return nil;
-    }
-
     const void *bufferPointer = buffer.contents;
     float *floatArray = malloc(buffer.length);
-    if (!floatArray) {
-        NSLog(@"Memory allocation failed for output array");
-        return nil;
-    }
-
     memcpy(floatArray, bufferPointer, buffer.length);
     NSArray *output = [self processOutput:floatArray outputLength:buffer.length / 4 imgWidth:self.yolo_res imgHeight:self.yolo_res];
 
-    // Generate class names string
     NSMutableString *classNamesString = [NSMutableString string];
     for (int i = 0; i < output.count; i++) {
         [classNamesString appendString:self.yolo_classes[[output[i][4] intValue]][0]];
         if (i < output.count - 1) [classNamesString appendString:@", "];
     }
-    //NSLog(@"Class Names: %@", classNamesString);
+    NSLog(@"Class Names: %@", classNamesString);
 
     // Get the current timestamp
     NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
@@ -380,7 +341,7 @@ NSString *output_buffer;
 
     // Log entry with timestamp
     NSString *logEntry = [NSString stringWithFormat:@"%@ - Class Names: %@", currentTimestamp, classNamesString];
-    //NSLog(@"%@", logEntry);
+    NSLog(@"%@", logEntry);
 
     // Append log entry to file
     NSString *filePath = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES)[0] stringByAppendingPathComponent:@"logs.txt"];
@@ -390,10 +351,9 @@ NSString *output_buffer;
     [fileHandle closeFile];
 
     free(floatArray);
-
     return output;
 }
 
-
 @end
+
 
