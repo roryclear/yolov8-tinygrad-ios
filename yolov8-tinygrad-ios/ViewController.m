@@ -2,6 +2,7 @@
 #import <AVFoundation/AVFoundation.h>
 #import <Metal/Metal.h>
 #import "Yolo.h"
+#import "FileServer.h"
 
 @interface ViewController ()
 
@@ -20,6 +21,7 @@
 @property (nonatomic, strong) AVAssetWriter *assetWriter;
 @property (nonatomic, strong) AVAssetWriterInput *videoWriterInput;
 @property (nonatomic, strong) AVAssetWriterInputPixelBufferAdaptor *adaptor;
+@property (nonatomic, strong) FileServer *fileServer;
 
 @end
 
@@ -33,6 +35,8 @@ NSMutableDictionary *classColorMap;
     self.yolo = [[Yolo alloc] init];
     [self setupCamera];
     [self setupFPSLabel];
+    self.fileServer = [[FileServer alloc] init];
+    [self.fileServer start];
     
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(handleDeviceOrientationChange)
