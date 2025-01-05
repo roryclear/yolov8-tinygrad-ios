@@ -108,10 +108,10 @@ NSMutableDictionary *classColorMap;
     NSString *timestamp = [formatter stringFromDate:[NSDate date]];
 
     NSURL *documentsDirectory = [[[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask] firstObject];
-    NSURL *outputURL = [documentsDirectory URLByAppendingPathComponent:[NSString stringWithFormat:@"output_%@.mov", timestamp]];
+    NSURL *outputURL = [documentsDirectory URLByAppendingPathComponent:[NSString stringWithFormat:@"output_%@.mp4", timestamp]];
 
     NSError *error = nil;
-    self.assetWriter = [AVAssetWriter assetWriterWithURL:outputURL fileType:AVFileTypeQuickTimeMovie error:&error];
+    self.assetWriter = [AVAssetWriter assetWriterWithURL:outputURL fileType:AVFileTypeMPEG4 error:&error];
     if (error) {
         NSLog(@"Error creating asset writer: %@", error.localizedDescription);
         return;
