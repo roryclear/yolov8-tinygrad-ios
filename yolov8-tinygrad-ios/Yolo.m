@@ -17,6 +17,7 @@ NSMutableDictionary *_h;
 NSMutableArray *_q;
 NSString *input_buffer;
 NSString *output_buffer;
+UInt8 *rgbData;
 
 - (instancetype)init {
     self = [super init];
@@ -26,6 +27,7 @@ NSString *output_buffer;
     self.mtl_queue = [self.device newCommandQueueWithMaxCommandBufferCount:1024];
     self.mtl_buffers_in_flight = [[NSMutableArray alloc] init];
     self.yolo_res = 640;
+    self.rgbData = (UInt8 *)malloc(self.yolo_res * self.yolo_res * 3);
     self.yolo_classes = @[
         @[@"person", [UIColor redColor]],@[@"bicycle", [UIColor greenColor]],@[@"car", [UIColor blueColor]],
         @[@"motorcycle", [UIColor cyanColor]],@[@"airplane", [UIColor magentaColor]],@[@"bus", [UIColor yellowColor]],
@@ -76,7 +78,7 @@ NSString *output_buffer;
     NSString *deviceModel = [NSString stringWithCString:systemInfo.machine encoding:NSUTF8StringEncoding];
 
     NSString *urlPath = @"https://raw.githubusercontent.com/roryclear/yolov8-tinygrad-ios/main/batch_req_%dx%d";
-    if ([deviceModel isEqualToString:@"iPhone8,4"]) { //IPHONE SE1
+    if ([deviceModel isEqualToString:@"iPhone8,4"] || [deviceModel isEqualToString:@"iPhone12,8"]) { //IPHONE SE1 and SE2, TODO finish
         path = @"batch_req_se1_%dx%d";
         urlPath = @"https://raw.githubusercontent.com/roryclear/yolov8-tinygrad-ios/main/batch_req_se1_%dx%d";
     }
@@ -261,77 +263,100 @@ NSString *output_buffer;
 
 - (NSArray *)yolo_infer:(CGImageRef)cgImage withOrientation:(AVCaptureVideoOrientation)orientation {
     CFDataRef rawData = CGDataProviderCopyData(CGImageGetDataProvider(cgImage));
+    if (!rawData) {
+        NSLog(@"Failed to get raw image data");
+        return nil;
+    }
+
     const UInt8 *rawBytes = CFDataGetBytePtr(rawData);
     size_t length = CFDataGetLength(rawData);
     size_t width = CGImageGetWidth(cgImage);
     size_t height = CGImageGetHeight(cgImage);
     size_t rgbLength = (length / 4) * 3;
-    UInt8 *rgbData = (UInt8 *)malloc(width * width * 3);
     
-    // RGBA to RGB
     if (orientation == AVCaptureVideoOrientationLandscapeRight) {
         for (size_t i = 0, j = 0; i < length; i += 4, j += 3) {
-            rgbData[j] = rawBytes[i];
-            rgbData[j + 1] = rawBytes[i + 1];
-            rgbData[j + 2] = rawBytes[i + 2];
+            self.rgbData[j] = rawBytes[i];
+            self.rgbData[j + 1] = rawBytes[i + 1];
+            self.rgbData[j + 2] = rawBytes[i + 2];
         }
     } else if (orientation == AVCaptureVideoOrientationLandscapeLeft) {
         for (size_t i = 0, j = 0; i < length; i += 4, j += 3) {
-            rgbData[rgbLength - 1 - j - 2] = rawBytes[i];
-            rgbData[rgbLength - 1 - j - 1] = rawBytes[i + 1];
-            rgbData[rgbLength - 1 - j] = rawBytes[i + 2];
+            self.rgbData[rgbLength - 1 - j - 2] = rawBytes[i];
+            self.rgbData[rgbLength - 1 - j - 1] = rawBytes[i + 1];
+            self.rgbData[rgbLength - 1 - j] = rawBytes[i + 2];
         }
     } else if (orientation == AVCaptureVideoOrientationPortrait) {
-        for (int i = 0; i < length; i += 4) {
-            int row = i / (width*4);
-            int col = (i % (width*4)) / 4;
-            rgbData[col*(width*3) + ((height-1-row)*3)] = rawBytes[i];
-            rgbData[col*(width*3) + ((height-1-row)*3) + 1] = rawBytes[i + 1];
-            rgbData[col*(width*3) + ((height-1-row)*3) + 2] = rawBytes[i + 2];
+        for (size_t i = 0; i < length; i += 4) {
+            int row = i / (width * 4);
+            int col = (i % (width * 4)) / 4;
+            self.rgbData[col * (width * 3) + ((height - 1 - row) * 3)] = rawBytes[i];
+            self.rgbData[col * (width * 3) + ((height - 1 - row) * 3) + 1] = rawBytes[i + 1];
+            self.rgbData[col * (width * 3) + ((height - 1 - row) * 3) + 2] = rawBytes[i + 2];
         }
-        length = width * width * 3;
     }
 
-    id<MTLBuffer> buffer = self.buffers[self.input_buffer];
-    memset(buffer.contents, 0, buffer.length);
-    memcpy(buffer.contents, rgbData, buffer.length);
-    free(rgbData);
     CFRelease(rawData);
-    
+
+    id<MTLBuffer> buffer = self.buffers[self.input_buffer];
+    if (!buffer || !buffer.contents) {
+        NSLog(@"Metal buffer is not initialized or invalid");
+        return nil;
+    }
+
+    memset(buffer.contents, 0, buffer.length);
+    memcpy(buffer.contents, self.rgbData, MIN(buffer.length, width * width * 3));
+
     for (NSMutableDictionary *values in self._q) {
-        id<MTLCommandBuffer> command_buffer = [self.mtl_queue commandBuffer];
-        id<MTLComputeCommandEncoder> encoder = [command_buffer computeCommandEncoder];
-        [encoder setComputePipelineState:self.pipeline_states[@[values[@"name"][0],values[@"datahash"][0]]]];
-        for(int i = 0; i < [(NSArray *)values[@"bufs"] count]; i++){
+        id<MTLCommandBuffer> commandBuffer = [self.mtl_queue commandBuffer];
+        if (!commandBuffer) {
+            NSLog(@"Failed to create Metal command buffer");
+            continue;
+        }
+
+        id<MTLComputeCommandEncoder> encoder = [commandBuffer computeCommandEncoder];
+        if (!encoder) {
+            NSLog(@"Failed to create compute command encoder");
+            continue;
+        }
+
+        [encoder setComputePipelineState:self.pipeline_states[@[values[@"name"][0], values[@"datahash"][0]]]];
+        for (int i = 0; i < [(NSArray *)values[@"bufs"] count]; i++) {
             [encoder setBuffer:self.buffers[values[@"bufs"][i]] offset:0 atIndex:i];
         }
         for (int i = 0; i < [(NSArray *)values[@"vals"] count]; i++) {
             NSInteger value = [values[@"vals"][i] integerValue];
             [encoder setBytes:&value length:sizeof(NSInteger) atIndex:i + [(NSArray *)values[@"bufs"] count]];
         }
-        MTLSize global_size = MTLSizeMake([values[@"global_sizes"][0] intValue], [values[@"global_sizes"][1] intValue], [values[@"global_sizes"][2] intValue]);
-        MTLSize local_size = MTLSizeMake([values[@"local_sizes"][0] intValue], [values[@"local_sizes"][1] intValue], [values[@"local_sizes"][2] intValue]);
-        [encoder dispatchThreadgroups:global_size threadsPerThreadgroup:local_size];
+
+        MTLSize globalSize = MTLSizeMake([values[@"global_sizes"][0] intValue], [values[@"global_sizes"][1] intValue], [values[@"global_sizes"][2] intValue]);
+        MTLSize localSize = MTLSizeMake([values[@"local_sizes"][0] intValue], [values[@"local_sizes"][1] intValue], [values[@"local_sizes"][2] intValue]);
+        [encoder dispatchThreadgroups:globalSize threadsPerThreadgroup:localSize];
         [encoder endEncoding];
-        [command_buffer commit];
-        [self.mtl_buffers_in_flight addObject: command_buffer];
+        [commandBuffer commit];
+        [self.mtl_buffers_in_flight addObject:commandBuffer];
     }
 
-    for(int i = 0; i < self.mtl_buffers_in_flight.count; i++){
+    for (int i = 0; i < self.mtl_buffers_in_flight.count; i++) {
         [self.mtl_buffers_in_flight[i] waitUntilCompleted];
     }
     [self.mtl_buffers_in_flight removeAllObjects];
+
     buffer = self.buffers[self.output_buffer];
+    if (!buffer || !buffer.contents) {
+        NSLog(@"Output buffer is invalid");
+        return nil;
+    }
+
     const void *bufferPointer = buffer.contents;
     float *floatArray = malloc(buffer.length);
+    if (!floatArray) {
+        NSLog(@"Memory allocation failed for output array");
+        return nil;
+    }
+
     memcpy(floatArray, bufferPointer, buffer.length);
     NSArray *output = [self processOutput:floatArray outputLength:buffer.length / 4 imgWidth:self.yolo_res imgHeight:self.yolo_res];
-    NSMutableString *classNamesString = [NSMutableString string];
-    for (int i = 0; i < output.count; i++) {
-        [classNamesString appendString:self.yolo_classes[[output[i][4] intValue]][0]];
-        if (i < output.count - 1) [classNamesString appendString:@", "];
-    }
-    NSLog(@"Class Names: %@", classNamesString);
     free(floatArray);
     return output;
 }
